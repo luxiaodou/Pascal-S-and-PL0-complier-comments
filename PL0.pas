@@ -188,36 +188,36 @@ procedure getch;
 		 end
 	end; { getsym }
 
-procedure gen( x: fct; y,z : integer ); 
+procedure gen( x: fct; y,z : integer );	{目标代码生成过程,x表示PCODE指令,y,z是指令的两个操作数}
   begin
-    if cx > cxmax
+    if cx > cxmax	{如果当前生成代码的行数cx大于允许的最大长度cxmax}
     then begin
-           writeln('program too long');
-           close(fin);
-           exit
+           writeln('program too long');	{输出报错信息}
+           close(fin);	{关闭文件}
+           exit	{退出程序}
          end;
-    with code[cx] do
+    with code[cx] do	{如果没有超出,对目标代码cx}
       begin
-        f := x;
-        l := y;
-        a := z
+        f := x;	{令其f为x}
+        l := y;	{令其l为y}
+        a := z	{令其a为z}	{这三句对应着code身为instruction类型的三个属性}
       end;
-    cx := cx+1
+    cx := cx+1	{将当前代码行数之计数加一}
   end; { gen }
 
-procedure test( s1,s2 :symset; n: integer ); 
+procedure test( s1,s2 :symset; n: integer );	{测试当前字符合法性过程,用于错误语法处理,若不合法则跳过单词值只读到合法单词为止}
   begin
-    if not ( sym in s1 )
+    if not ( sym in s1 )	(如果当前符号不在s1中)
     then begin
-           error(n);
-           s1 := s1+s2;
-           while not( sym in s1) do
-             getsym
+           error(n);	{报n号错误}
+           s1 := s1+s2;	{将s1赋值为s1和s2的集合}
+           while not( sym in s1) do	{这个while的本质是pass掉所有不合法的符号,以恢复语法分析工作}
+             getsym	{获得下一个标识符}
            end
   end; { test }
 
-procedure block( lev,tx : integer; fsys : symset ); 
-  var  dx : integer;  { data allocation index }
+procedure block( lev,tx : integer; fsys : symset );	{分程序的处理过程}
+  var  dx : integer;  { data allocation index }	{}
        tx0: integer;  { initial table index }
        cx0: integer;  { initial code index }
 
@@ -608,14 +608,14 @@ prosedure: error(21)
     gen(opr,0,0); { return }
     test( fsys, [],8 );
     listcode;
-  end { block };
+end { block };
 
-procedure interpret;  
-  const stacksize = 500;
-  var p,b,t: integer; { program-,base-,topstack-register }
-     i : instruction;{ instruction register }
-     s : array[1..stacksize] of integer; { data store }
-  function base( l : integer ): integer;
+procedure interpret;  {解释执行程序}
+  const stacksize = 500;	{设置栈大小为常量500}
+  var p,b,t: integer; { program-,base-,topstack-register }	{设置三个寄存器,分别记录下一条指令,基址地址和栈顶指针}
+     i : instruction;{ instruction register }	{指令寄存器,类型为instruction,显然是为了存放当前指令}
+     s : array[1..stacksize] of integer; { data store }	{数据栈,大小为stacksize=500个integer}
+  function base( l : integer ): integer;	
     var b1 : integer;
     begin { find base l levels down }
       b1 := b;
@@ -728,19 +728,19 @@ procedure interpret;
   end; { interpret }
 
 begin { main }	{ 主函数 }
-  writeln('please input source program file name : ');	{  }
-  readln(sfile);
-  assign(fin,sfile);
-  reset(fin);
-  for ch := 'A' to ';' do
-    ssym[ch] := nul;
-  word[1] := 'begin        '; word[2] := 'call         ';
+  writeln('please input source program file name : ');	{提示信息,要求用户输入源码的地址}
+  readln(sfile);	{读入一行保存至sfile}
+  assign(fin,sfile);	{将文件名字符串变量str付给文件变量fin}
+  reset(fin);	{打开fin}
+  for ch := 'A' to ';' do	
+    ssym[ch] := nul;	{将从'A'到';'的符号的ssym都设置为nul,表示不合法}
+  word[1] := 'begin        '; word[2] := 'call         ';	
   word[3] := 'const        '; word[4] := 'do           ';
   word[5] := 'end          '; word[6] := 'if           ';
   word[7] := 'odd          '; word[8] := 'procedure    ';
   word[9] := 'read         '; word[10]:= 'then         ';
   word[11]:= 'var          '; word[12]:= 'while        ';
-  word[13]:= 'write        ';
+  word[13]:= 'write        ';	{填写保留字表,注意这里所有字符都预留的相同的长度}
 
   wsym[1] := beginsym;      wsym[2] := callsym;
   wsym[3] := constsym;      wsym[4] := dosym;
@@ -748,7 +748,7 @@ begin { main }	{ 主函数 }
   wsym[7] := oddsym;        wsym[8] := procsym;
   wsym[9] := readsym;       wsym[10]:= thensym;
   wsym[11]:= varsym;        wsym[12]:= whilesym;
-  wsym[13]:= writesym;
+  wsym[13]:= writesym;	{填写保留字对应的标识符sym的值}
 
   ssym['+'] := plus;        ssym['-'] := minus;
   ssym['*'] := times;       ssym['/'] := slash;
@@ -756,31 +756,31 @@ begin { main }	{ 主函数 }
   ssym['='] := eql;         ssym[','] := comma;
   ssym['.'] := period;
   ssym['<'] := lss;         ssym['>'] := gtr;
-  ssym[';'] := semicolon;
+  ssym[';'] := semicolon;	{填写对应符号对应的标识符sym的值}
 
   mnemonic[lit] := 'LIT  '; mnemonic[opr] := 'OPR  ';
   mnemonic[lod] := 'LOD  '; mnemonic[sto] := 'STO  ';
   mnemonic[cal] := 'CAL  '; mnemonic[int] := 'INT  ';
   mnemonic[jmp] := 'JMP  '; mnemonic[jpc] := 'JPC  ';
-  mnemonic[red] := 'RED  '; mnemonic[wrt] := 'WRT  ';
+  mnemonic[red] := 'RED  '; mnemonic[wrt] := 'WRT  ';	{填写助记符表,与PCODE指令一一对应}
 
-  declbegsys := [ constsym, varsym, procsym ];
+  declbegsys := [ constsym, varsym, procsym ];	{}
   statbegsys := [ beginsym, callsym, ifsym, whilesym];
   facbegsys := [ ident, number, lparen ];
-  err := 0;
-  cc := 0;
-  cx := 0;
-  ll := 0;
-  ch := ' ';
-  kk := al;
-  getsym;
-  block( 0,0,[period]+declbegsys+statbegsys );
-  if sym <> period
-  then error(9);
-  if err = 0
-  then interpret
-  else write('ERRORS IN PL/0 PROGRAM');
-  writeln;
-  close(fin)
-  readln(sfile);
+  err := 0;	{将出错的标识符置零}
+  cc := 0;	{行缓冲指针置零}
+  cx := 0;	{生成代码行数计数置零}
+  ll := 0;	{词法分析行缓冲区长度置零}
+  ch := ' ';	{当前字符设为' '}
+  kk := al;	{kk的值初始化为0}
+  getsym;	{获取第一个词的标识符}
+  block( 0,0,[period]+declbegsys+statbegsys );	{执行主程序block,位于\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\NOT FINISHED\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\}
+  if sym <> period	{如果符号不是句号}
+  then error(9);	{报⑨号错误}
+  if err = 0	{如果err为0表示没有错误}
+  then interpret	{开始解释执行生成的PCODE代码}
+  else write('ERRORS IN PL/0 PROGRAM');	{否则出现了错误,报错}
+  writeln;	{换行}
+  close(fin)	{关闭源文件程序}
+  readln(sfile);	{读取PL/0源程序}
 end.           
