@@ -15,7 +15,7 @@ type symbol =
        leq,gtr,geq,lparen,rparen,comma,semicolon,period,becomes,
        beginsym,endsym,ifsym,thensym,whilesym,dosym,callsym,constsym,
        varsym,procsym,readsym,writesym );	{symbol的宏定义为一个枚举}
-     alfa = packed array[1..al] of char;	{alfa宏定义为含有a1个元素的合并数组}
+     alfa = packed array[1..al] of char;	{alfa宏定义为含有a1个元素的合并数组，为标识符的类型}
      objecttyp = (constant,variable,prosedure);		{objecttyp的宏定义为一个枚举}
      symset = set of symbol;	{symset为symbol的集合}
      fct = ( lit,opr,lod,sto,cal,int,jmp,jpc,red,wrt ); { functions }	{fct为一个枚举，其实是PCODE的各条指令}
@@ -45,60 +45,60 @@ var   ch : char;      { last character read }	{最后读出的字符}
       ll : integer;   { line length }	{行缓冲区长度}
       kk,err: integer;	
       cx : integer;   { code allocation index }	{代码分配指针}
-      line: array[1..81] of char;	{}
+      line: array[1..81] of char;	{缓冲一行代码}
       a : alfa;
-      code : array[0..cxmax] of instruction;
-      word : array[1..norw] of alfa;
-      wsym : array[1..norw] of symbol;
-      ssym : array[char] of symbol;
-      mnemonic : array[fct] ofW
+      code : array[0..cxmax] of instruction;	{用来保存编译后的PCODE代码，最大容量为cxmax}
+      word : array[1..norw] of alfa;	{保留字表}
+      wsym : array[1..norw] of symbol	{保留字表中每个保留字对应的symbol类型}
+      ssym : array[char] of symbol;		{符号对应的symbol类型}
+      mnemonic : array[fct] ofW	{助记符}
                    packed array[1..5] of char;
-      declbegsys, statbegsys, facbegsys : symset;
-      table : array[0..txmax] of
-                record
-                  name : alfa;
-                  case kind: objecttyp of
-                    constant : (val:integer );
-                    variable,prosedure: (level,adr: integer )
+      declbegsys, statbegsys, facbegsys : symset;	{声明开始，表达式开始、项开始的符号集合}
+      table : array[0..txmax] of	{定义符号表}
+                record	{表中的元素类型是记录类型}
+                  name : alfa;	{元素名}
+                  case kind: objecttyp of	{根据符号的类型保存相应的信息}
+                    constant : (val:integer );	{如果是常量，val中保存常量的值}
+                    variable,prosedure: (level,adr: integer )	{如果是变量或过程，保存存放层数和偏移地址}
                 end;
       fin : text;     { source program file }	{源代码文件}
       sfile: string;  { source program file name }	{源程序文件名}
 
-procedure error( n : integer );  {出错处理程序}
+procedure error( n : integer );  {错误处理程序}
   begin
-    writeln( '****', ' ':cc-1, '^', n:2 );	{报错提示信息，'^'}
+    writeln( '****', ' ':cc-1, '^', n:2 );	{报错提示信息，'^'指向出错位置}
     err := err+1 {错误次数+1}
   end; { error }
 
-procedure getsym;  
+procedure getsym;	{词法分析程序}
 var i,j,k : integer;
-procedure getch;
+procedure getch;	{读取下一个字符}
     begin
-      if cc = ll  { get character to end of line }
-      then begin { read next line }
-             if eof(fin)
+      if cc = ll  { get character to end of line }	{如果读完了一行（行指针与该行长度相等）}
+      then begin { read next line }	{开始读取下一行}
+             if eof(fin)	{如果到达文件末尾}
              then begin
-                   writeln('program incomplete');
-                   close(fin);
-                   exit;
+                   writeln('program incomplete');	{报错}
+                   close(fin);	{关闭文件}
+                   exit;	{退出}
                   end;
-             ll := 0;
-             cc := 0;
-             write(cx:4,' ');  { print code address }
-             while not eoln(fin) do
+             ll := 0;	{将行长度重置}
+             cc := 0;	{将行指针重置}
+             write(cx:4,' ');  { print code address }	{输出代码地址，宽度为4}
+             while not eoln(fin) do	{当没有到行末时}
                begin
-                 ll := ll+1;
-                 read(fin,ch);
-                 write(ch);
-                 line[ll] := ch
+                 ll := ll+1;	{将行缓冲区的长度+1}
+                 read(fin,ch);	{从文件中读取一个字符到ch中}
+                 write(ch);	{控制台输出ch}
+                 line[ll] := ch	{把这个字符放到当前行末尾}
                end;
-             writeln;
-             readln(fin);
-             ll := ll+1;
-             line[ll] := ' ' { process end-line }
+             writeln;	{换行}
+             readln(fin);	{源文件读取从下一行开始}
+             ll := ll+1;	{行长度计数加一}
+             line[ll] := ' ' { process end-line }	{行数组最后一个元素为空格}
            end;
-      cc := cc+1;
-      ch := line[cc]
+      cc := cc+1;	{行指针+1}
+      ch := line[cc]	{将ch}
     end; { getch }
   begin { procedure getsym;   }
     while ch = ' ' do
