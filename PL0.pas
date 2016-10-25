@@ -46,7 +46,7 @@ var   ch : char;      { last character read }	{最后读出的字符}
       kk,err: integer;	
       cx : integer;   { code allocation index }	{代码分配指针}
       line: array[1..81] of char;	{缓冲一行代码}
-      a : alfa;
+      a : alfa;	{用来存储symbol的变量}
       code : array[0..cxmax] of instruction;	{用来保存编译后的PCODE代码，最大容量为cxmax}
       word : array[1..norw] of alfa;	{保留字表}
       wsym : array[1..norw] of symbol	{保留字表中每个保留字对应的symbol类型}
@@ -66,14 +66,14 @@ var   ch : char;      { last character read }	{最后读出的字符}
 
 procedure error( n : integer );  {错误处理程序}
   begin
-    writeln( '****', ' ':cc-1, '^', n:2 );	{报错提示信息，'^'指向出错位置}
+    writeln( '****', ' ':cc-1, '^', n:2 );	{报错提示信息，'^'指向出错位置，并提示错误类型}
     err := err+1 {错误次数+1}
   end; { error }
 
 procedure getsym;	{词法分析程序}
-var i,j,k : integer;
-procedure getch;	{读取下一个字符}
-    begin
+var i,j,k : integer;	{声明计数变量}
+procedure getch;
+	begin
       if cc = ll  { get character to end of line }	{如果读完了一行（行指针与该行长度相等）}
       then begin { read next line }	{开始读取下一行}
              if eof(fin)	{如果到达文件末尾}
@@ -98,95 +98,95 @@ procedure getch;	{读取下一个字符}
              line[ll] := ' ' { process end-line }	{行数组最后一个元素为空格}
            end;
       cc := cc+1;	{行指针+1}
-      ch := line[cc]	{将ch}
+      ch := line[cc]	{读取下一个字符，将字符放进全局变量ch}
     end; { getch }
-  begin { procedure getsym;   }
-    while ch = ' ' do
-      getch;
-    if ch in ['a'..'z']
-    then begin  { identifier of reserved word }
-           k := 0;
-           repeat
-             if k < al
+  begin { procedure getsym;   }	{标识符识别开始}
+    while ch = ' ' do	{去除空字符}
+      getch;	{调用上面的getch过程}
+    if ch in ['a'..'z']	{如果识别到字母，那么有可能是保留字或标识符}
+    then begin  { identifier of reserved word }	{开始识别}
+           k := 0;	{标识符指针置零，这个量用来统计标识符长度}
+           repeat	{循环}
+             if k < al	{如果k的大小小于标识符的最大长度}
              then begin
-                   k := k+1;
-                   a[k] := ch
+                   k := k+1;	{k++}
+                   a[k] := ch	{将ch写入标识符暂存变量a}
                  end;
-             getch
-           until not( ch in ['a'..'z','0'..'9']);
-           if k >= kk        { kk : last identifier length }
-           then kk := k
-           else repeat
-                  a[kk] := ' ';
-                  kk := kk-1
-               until kk = k;
-           id := a;
-           i := 1;
-           j := norw;   { binary search reserved word table }
+             getch	{获取下一个字符}
+           until not( ch in ['a'..'z','0'..'9']);	{直到读出的不是数字或字母的时候，标识符结束}
+           if k >= kk        { kk : last identifier length }	{若k比kk大}
+           then kk := k	{kk记录当前标识符的长度k}
+           else repeat	{循环}
+                  a[kk] := ' ';		{标识符最后一位为空格}
+                  kk := kk-1	{k--}
+               until kk = k;	{直到kk等于当前标识符的长度，这样做的意义是防止上一个标识符存在a中的内容影响到当前标识符，比如上一个标识符为“qwerty”，现在的标识符为“abcd”，如果不清后几位则a中会保存"abcdty"，这显然是错误的}
+           id := a;	{id保存标识符名}
+           i := 1;	{i指向第一个保留字}
+           j := norw;   { binary search reserved word table }	{二分查找保留字表，将j设为保留字的最大数目}
            repeat
-             k := (i+j) div 2;
-             if id <= word[k]
-             then j := k-1;
-             if id >= word[k]
-             then i := k+1
-           until i > j;
-           if i-1 > j
-           then sym := wsym[k]
-           else sym := ident
+             k := (i+j) div 2;	{再次用到k，但这里只是作为二分查找的中间变量}
+             if id <= word[k]	{若当前标识符小于或等于保留字表中的第k个，这里的判断依据的是字典序，那么我们可以推测符号表是按照字典序保存的}
+             then j := k-1;		{j = k-1}
+             if id >= word[k]	{若当前标识符大于或等于保留字表中的第k个}
+             then i := k+1		{i = k+1}
+           until i > j;		{查找结束条件}
+           if i-1 > j	{找到了}
+           then sym := wsym[k]	{将找到的保留字类型赋给sym}
+           else sym := ident	{未找到则把sym职位ident类型，表示是标识符}
          end
-    else if ch in ['0'..'9']
+    else if ch in ['0'..'9']	{如果字符是数字}
          then begin  { number }
-                k := 0;
-                num := 0;
-                sym := number;
-                repeat
-                  num := 10*num+(ord(ch)-ord('0'));
-                  k := k+1;
-                  getch
-                until not( ch in ['0'..'9']);
-                if k > nmax
-                then error(30)
+                k := 0;	{这里的k用来记录数字的位数}
+                num := 0;	{num保存数字}
+                sym := number;	{将标识符设置为数字}
+                repeat	{循环开始}
+                  num := 10*num+(ord(ch)-ord('0'));	{将数字字符转换为数字并拼接起来赋给num}
+                  k := k+1;	{k++}
+                  getch	{继续读字符}
+                until not( ch in ['0'..'9']);	{直到输入的不再是数字}
+                if k > nmax	{如果数字的位数超过了数字允许的最大长度}
+                then error(30)	{报错}
               end
-         else if ch = ':'
-              then begin
-                    getch;
-                    if ch = '='
-                    then begin
-                          sym := becomes;
-                          getch
-                        end
-                    else sym := nul 
-                   end
-              else if ch = '<'
-                   then begin
-                          getch;
-                          if ch = '='
-                          then begin
-                                 sym := leq;
-                                 getch
-                               end
-                          else if ch = '>'
-                               then begin
-                                     sym := neq;
-                                     getch
-                                   end
-                          else sym := lss
-                        end
-                   else if ch = '>'
-                        then begin
-                               getch;
-                               if ch = '='
-                               then begin
-                                      sym := geq;
-                                      getch
-                                    end
-                               else sym := gtr
-                             end
-                        else begin
-                               sym := ssym[ch];
-                               getch
-                             end
-  end; { getsym }
+	else if ch = ':'	{当字符不是数字或字母，而是':'时}
+		 then begin
+				getch;	{读下一个字符}
+				if ch = '='	{如果下一个字符是'='}
+				then begin
+					  sym := becomes;	{将标识符sym设置为becomes，表示复制}
+					  getch	{读下一个字符}
+					end
+				else sym := nul {否则，将标识符设置为nul，表示非法}
+			   end
+	else if ch = '<'	{当读到的字符是'<'时}
+		   then begin	
+				  getch;	{读下一个字符}
+				  if ch = '='	{若读到的字符是'='}
+				  then begin
+						 sym := leq;	{则sym为leq,表示小于等于}
+						 getch	{读下一个字符}
+					   end
+				  else if ch = '>'	{若读到的字符是'>'}
+					   then begin
+							 sym := neq;	{则sym为neq,表示不等于}
+							 getch	{读下一个字符}
+						   end
+				  else sym := lss	{否则,sym设为lss,表示小于}
+				end
+	else if ch = '>'	{若读到的是'>'}
+			then begin
+				   getch;	{读下一个字符}
+				   if ch = '='	{若读到的是'='}
+				   then begin
+						  sym := geq;	{sym设为geq,表示大于等于}
+						  getch	{读下一个字符}
+						end
+				   else sym := gtr	{否则,sym设为gtr,表示大于}
+				 end
+	else begin	{若非上述几种符号}
+		   sym := ssym[ch];	{从ssym表中查到此字符对应的类型,赋给sym}
+		   getch	{读下一个字符}
+		 end
+	end; { getsym }
 
 procedure gen( x: fct; y,z : integer ); 
   begin
