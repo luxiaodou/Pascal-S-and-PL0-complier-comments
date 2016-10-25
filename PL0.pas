@@ -11,6 +11,7 @@ const
   cxmax  = 200;        { size of code array }  {生成目标代码数组最大长度}
 
 {类型变量定义}
+<<<<<<< HEAD
 type
   symbol =
     (nul, ident, number, plus, minus, times, slash, oddsym, eql, neq, lss,
@@ -30,6 +31,22 @@ type
     a: 0..amax;        { displacement address }
     {相对位移地址}
   end;
+=======
+type symbol =
+     ( nul,ident,number,plus,minus,times,slash,oddsym,eql,neq,lss,
+       leq,gtr,geq,lparen,rparen,comma,semicolon,period,becomes,
+       beginsym,endsym,ifsym,thensym,whilesym,dosym,callsym,constsym,
+       varsym,procsym,readsym,writesym );	{symbol的宏定义为一个枚举}
+     alfa = packed array[1..al] of char;	{alfa宏定义为含有a1个元素的合并数组}
+     objecttyp = (constant,variable,prosedure);		{objecttyp的宏定义为一个枚举}
+     symset = set of symbol;	{symset为symbol的集合}
+     fct = ( lit,opr,lod,sto,cal,int,jmp,jpc,red,wrt ); { functions }	{fct为一个枚举，其实是PCODE的各条指令}
+     instruction = packed record	{instruction声明为一个记录类型}
+                     f : fct;            { function code }	{函数代码}
+                     l : 0..levmax;      { level }	{嵌套层次}
+                     a : 0..amax;        { displacement address }	{相对位移地址}
+                   end;
+>>>>>>> parent of e510d08... before reformat
                   {   lit 0, a : load constant a	读取常量a到数据栈栈顶
                       opr 0, a : execute operation a	执行a运算
                       lod l, a : load variable l,a	读取变量放到数据栈栈顶，变量的相对地址为a，层次差为1
@@ -42,6 +59,7 @@ type
                       wrt 0, 0 : write stack-top	将栈顶内容输出
                   }
 
+<<<<<<< HEAD
   {全局变量定义}
 var
   ch: Char;      { last character read }   {最后读出的字符}
@@ -79,6 +97,159 @@ begin
   Writeln('****', ' ': cc - 1, '^', n: 2);  {报错提示信息，'^'指向出错位置}
   err := err + 1 {错误次数+1}
 end; { error }
+=======
+{全局变量定义}
+var   ch : char;      { last character read }	{最后读出的字符}
+      sym: symbol;    { last symbol read }	{最近识别出来符号类型}
+      id : alfa;      { last identifier read }	{最后读出来的识别符}
+      num: integer;   { last number read }	{最后读出来的数字}
+      cc : integer;   { character count }	{行缓冲区指针}
+      ll : integer;   { line length }	{行缓冲区长度}
+      kk,err: integer;	
+      cx : integer;   { code allocation index }	{代码分配指针}
+      line: array[1..81] of char;	{}
+      a : alfa;
+      code : array[0..cxmax] of instruction;
+      word : array[1..norw] of alfa;
+      wsym : array[1..norw] of symbol;
+      ssym : array[char] of symbol;
+      mnemonic : array[fct] ofW
+                   packed array[1..5] of char;
+      declbegsys, statbegsys, facbegsys : symset;
+      table : array[0..txmax] of
+                record
+                  name : alfa;
+                  case kind: objecttyp of
+                    constant : (val:integer );
+                    variable,prosedure: (level,adr: integer )
+                end;
+      fin : text;     { source program file }	{源代码文件}
+      sfile: string;  { source program file name }	{源程序文件名}
+
+procedure error( n : integer );  {出错处理程序}
+  begin
+    writeln( '****', ' ':cc-1, '^', n:2 );	{报错提示信息，'^'}
+    err := err+1 {错误次数+1}
+  end; { error }
+
+procedure getsym;  
+var i,j,k : integer;
+procedure getch;
+    begin
+      if cc = ll  { get character to end of line }
+      then begin { read next line }
+             if eof(fin)
+             then begin
+                   writeln('program incomplete');
+                   close(fin);
+                   exit;
+                  end;
+             ll := 0;
+             cc := 0;
+             write(cx:4,' ');  { print code address }
+             while not eoln(fin) do
+               begin
+                 ll := ll+1;
+                 read(fin,ch);
+                 write(ch);
+                 line[ll] := ch
+               end;
+             writeln;
+             readln(fin);
+             ll := ll+1;
+             line[ll] := ' ' { process end-line }
+           end;
+      cc := cc+1;
+      ch := line[cc]
+    end; { getch }
+  begin { procedure getsym;   }
+    while ch = ' ' do
+      getch;
+    if ch in ['a'..'z']
+    then begin  { identifier of reserved word }
+           k := 0;
+           repeat
+             if k < al
+             then begin
+                   k := k+1;
+                   a[k] := ch
+                 end;
+             getch
+           until not( ch in ['a'..'z','0'..'9']);
+           if k >= kk        { kk : last identifier length }
+           then kk := k
+           else repeat
+                  a[kk] := ' ';
+                  kk := kk-1
+               until kk = k;
+           id := a;
+           i := 1;
+           j := norw;   { binary search reserved word table }
+           repeat
+             k := (i+j) div 2;
+             if id <= word[k]
+             then j := k-1;
+             if id >= word[k]
+             then i := k+1
+           until i > j;
+           if i-1 > j
+           then sym := wsym[k]
+           else sym := ident
+         end
+    else if ch in ['0'..'9']
+         then begin  { number }
+                k := 0;
+                num := 0;
+                sym := number;
+                repeat
+                  num := 10*num+(ord(ch)-ord('0'));
+                  k := k+1;
+                  getch
+                until not( ch in ['0'..'9']);
+                if k > nmax
+                then error(30)
+              end
+         else if ch = ':'
+              then begin
+                    getch;
+                    if ch = '='
+                    then begin
+                          sym := becomes;
+                          getch
+                        end
+                    else sym := nul 
+                   end
+              else if ch = '<'
+                   then begin
+                          getch;
+                          if ch = '='
+                          then begin
+                                 sym := leq;
+                                 getch
+                               end
+                          else if ch = '>'
+                               then begin
+                                     sym := neq;
+                                     getch
+                                   end
+                          else sym := lss
+                        end
+                   else if ch = '>'
+                        then begin
+                               getch;
+                               if ch = '='
+                               then begin
+                                      sym := geq;
+                                      getch
+                                    end
+                               else sym := gtr
+                             end
+                        else begin
+                               sym := ssym[ch];
+                               getch
+                             end
+  end; { getsym }
+>>>>>>> parent of e510d08... before reformat
 
 procedure getsym;  {词法分析程序}
 var
