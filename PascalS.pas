@@ -10,7 +10,7 @@ program PASCALS(INPUT,OUTPUT,PRD,PRR);
 {   further modified by M.Z.Jin
     Department of Computer Science&Engineering BUAA,0ct.1989
 }
-const nkw = 27;    { no. of key words }
+const nkw = 27;    { no. of key words }	{key word应当理解为保留字}
       alng = 10;   { no. of significant chars in identifiers }
       llng = 121;  { input line length }
       emax = 322;  { max exponent of real numbers }
@@ -24,13 +24,13 @@ const nkw = 27;    { no. of key words }
       cmax = 800;  { size of code }
       lmax = 7;    { maximum level }
       smax = 600;  { size of string-table }
-      ermax = 58;  { max error no. }
+      ermax = 58;  { max error no. }	{最大错误数量}
       omax = 63;   { highest order code }
-      xmax = 32767;  { 2**15-1 }
-      nmax = 32767;  { 2**15-1 }
+      xmax = 32767;  { 2**15-1 }	{index的范围}
+      nmax = 32767;  { 2**15-1 }	{数字的范围}
       lineleng = 132; { output line length }
-      linelimit = 200;
-      stacksize = 1450;
+      linelimit = 200;	{行数限制}
+      stacksize = 1450;	{数据栈大小}
 type symbol = ( intcon, realcon, charcon, stringcon,
                 notsy, plus, minus, times, idiv, rdiv, imod, andsy, orsy,
                 eql, neq, gtr, geq, lss, leq,
@@ -66,17 +66,17 @@ var  ch:         char; { last character read from source program }
      t,a,b,sx,c1,c2:integer;  { indices to tables }
      iflag, oflag, skipflag, stackdump, prtables: boolean;
      sy:         symbol;      { last symbol read by insymbol }
-     errs:       set of 0..ermax;
+     errs:       set of 0..ermax;	{记录错误的集合}
      id:         alfa;        { identifier from insymbol }
      progname:   alfa;
      stantyps:   typset;
      constbegsys, typebegsys, blockbegsys, facbegsys, statbegsys: symset;
      line:       array[1..llng] of char;
-     key:        array[1..nkw] of alfa;
-     ksy:        array[1..nkw] of symbol;
+     key:        array[1..nkw] of alfa;		{保留字集合}
+     ksy:        array[1..nkw] of symbol;	{保留字对应的sym集合}
      sps:        array[char]of symbol;  { special symbols }
      display:    array[0..lmax] of integer;
-     tab:        array[0..tmax] of      { indentifier lable }
+     tab:        array[0..tmax] of      { indentifier lable }	{符号表}
                  packed record
                      name: alfa;
                      link: index;
@@ -87,26 +87,26 @@ var  ch:         char; { last character read from source program }
                      lev:  0..lmax;
                      adr: integer
                  end;
-     atab:       array[1..amax] of    { array-table }
+     atab:       array[1..amax] of    { array-table }	{数组信息向量表}
                  packed record
                      inxtyp,eltyp: types;
                      elref,low,high,elsize,size: index
                  end;
-     btab:       array[1..bmax] of    { block-table }
+     btab:       array[1..bmax] of    { block-table }	{分符号表}
                  packed record
                      last, lastpar, psize, vsize: index
                  end;
-     stab:       packed array[0..smax] of char; { string table }
-     rconst:     array[1..c2max] of real;
-     code:       array[0..cmax] of order;
-     psin,psout,prr,prd:text;      { default in pascal p }
-     inf, outf, fprr: string;
+     stab:       packed array[0..smax] of char; { string table }	{字符串常量表}
+     rconst:     array[1..c2max] of real;	{实常量表}
+     code:       array[0..cmax] of order;	{P代码表}
+     psin,psout,prr,prd:text;      { default in pascal p }	{写入inf,outf,fppr文件的文本}
+     inf, outf, fprr: string;	{代码输入,代码输出,结果输出的文件路径}
 
-procedure errormsg;
+procedure errormsg;	{打印错误信息摘要的过程}
   var k : integer;
-     msg: array[0..ermax] of alfa;
+     msg: array[0..ermax] of alfa;	{给定错误信息表,最多ermax种错误}
   begin
-    msg[0] := 'undef id  ';    msg[1] := 'multi def ';
+    msg[0] := 'undef id  ';    msg[1] := 'multi def ';	{给定错误类型'k',及其提示信息}
     msg[2] := 'identifier';    msg[3] := 'program   ';
     msg[4] := ')         ';    msg[5] := ':         ';
     msg[6] := 'syntax    ';    msg[7] := 'ident,var ';
@@ -137,18 +137,18 @@ procedure errormsg;
     msg[56] := 'begin     ';    msg[57] := 'end       ';
     msg[58] := 'factor';
 
-    writeln(psout);
-    writeln(psout,'key words');
+    writeln(psout);	{向文件中打印一个空行}
+    writeln(psout,'key words');	{向psout文件中输出'key words',并换行}
     k := 0;
-    while errs <> [] do
+    while errs <> [] do	{如果还有错误信息没有处理}
       begin
-        while not( k in errs )do k := k + 1;
-        writeln(psout, k, ' ', msg[k] );
-        errs := errs - [k]
-    end { while errs }
+        while not( k in errs )do k := k + 1;	{如果不存在第k种错误,则判断是否存在地k+1中}
+        writeln(psout, k, ' ', msg[k] );	{在文件中输出错误的编号及其信息}
+        errs := errs - [k]	{将错误集合中的该类错误去除(因为已经处理过)}
+    end { while errs }	{循环直到所有错误被处理}
   end { errormsg } ;
 
-procedure endskip;
+procedure endskip;	{源程序出错后再整个跳过部分代码下面画下划线}
   begin                 { underline skipped part of input }
     while errpos < cc do
       begin
@@ -161,41 +161,41 @@ procedure endskip;
 
 procedure nextch;  { read next character; process line end }
   begin
-    if cc = ll
+    if cc = ll	{如果读到了一行的末尾}
     then begin
-           if eof( psin )
+           if eof( psin )	{文件读完了}
            then begin
-                  writeln( psout );
-                  writeln( psout, 'program incomplete' );
-                  errormsg;
+                  writeln( psout );	{写输出文件}
+                  writeln( psout, 'program incomplete' );	{提示信息}
+                  errormsg;	{输出错误提示信息到list文件}
                   exit;
                 end;
-           if errpos <> 0
+           if errpos <> 0	{说明有错误,开始错误处理}
            then begin
-                  if skipflag then endskip;
+                  if skipflag then endskip;	{跳过错误代码}
                   writeln( psout );
                   errpos := 0
                 end;
-           write( psout, lc: 5, ' ');
-           ll := 0;
+           write( psout, lc: 5, ' ');	{没有错误执行的操作,在list文件中输出当前PCODE的行数以及一个空格,不换行}
+           ll := 0;	{将行长度和行指针置零}
            cc := 0;
-           while not eoln( psin ) do
+           while not eoln( psin ) do	{如果文件没有读完,读下一行}
              begin
-               ll := ll + 1;
-               read( psin, ch );
-               write( psout, ch );
-               line[ll] := ch
+               ll := ll + 1;	{统计行的长度}
+               read( psin, ch );	{读取下一个字符}
+               write( psout, ch );	{输出到list文件中}
+               line[ll] := ch	{将ch保存到line中,循环结束line保存下一行代码的所有信息}
              end;
            ll := ll + 1;
            readln( psin );
-           line[ll] := ' ';
+           line[ll] := ' ';	{一行的末尾置为空格}
            writeln( psout );
          end;
-         cc := cc + 1;
-         ch := line[cc];
+	 cc := cc + 1;	{行指针前移}
+	 ch := line[cc];	{取词}
   end { nextch };
 
-procedure error( n: integer );
+procedure error( n: integer );	{打印出错位置和出错编号}
 begin
   if errpos = 0
   then write ( psout, '****' );
@@ -207,7 +207,7 @@ begin
       end
 end { error };
 
-procedure fatal( n: integer );
+procedure fatal( n: integer );	{打印表格溢出信息,写入数据多于表大小时会终止程序}
   var msg : array[1..7] of alfa;
   begin
     writeln( psout );
@@ -220,102 +220,101 @@ procedure fatal( n: integer );
     exit; {terminate compilation }
   end { fatal };
 
-procedure insymbol;  {reads next symbol}
-label 1,2,3;
-  var  i,j,k,e: integer;
-procedure readscale;
+procedure insymbol;  {reads next symbol}	{取符号方法}
+label 1,2,3;	{定义label,为goto的使用做准备}
+  var  i,j,k,e: integer;	
+  procedure readscale;	{处理实数的指数部分}
     var s,sign: integer;
     begin
       nextch;
-      sign := 1;
-      s := 0;
-      if ch = '+'
+      sign := 1;	{符号}
+      s := 0		{数字}
+      if ch = '+'	{如果读到'+',不作处理}
       then nextch
-      else if ch = '-'
+      else if ch = '-'	{如果是'-',符号设为负}
            then begin
                   nextch;
                   sign := -1
                 end;
-      if not(( ch >= '0' )and (ch <= '9' ))
+      if not(( ch >= '0' )and (ch <= '9' ))	{如果符号后面跟的不是数字,报错}
       then error( 40 )
       else repeat
-           s := 10*s + ord( ord(ch)-ord('0'));
+           s := 10*s + ord( ord(ch)-ord('0'));	{把数字存到s中}
            nextch;
           until not(( ch >= '0' ) and ( ch <= '9' ));
-      e := s*sign + e
+      e := s*sign + e	{和下面计算中的e结合得到真的e}
     end { readscale };
 
-  procedure adjustscale;
+  procedure adjustscale;	{根据小数位数和指数大小求出数字数值的大小}
     var s : integer;
         d, t : real;
     begin
-      if k + e > emax
+      if k + e > emax	{当前的位数加上指数如果超上限报错}
       then error(21)
-      else if k + e < emin
-           then rnum := 0
-           else begin
-                  s := abs(e);
-                  t := 1.0;
-                  d := 10.0;
-                  repeat
-                    while not odd(s) do
-                      begin
-                        s := s div 2;
-                        d := sqr(d)
-                      end;
-                    s := s - 1;
-                    t := d * t
-                  until s = 0;
-                  if e >= 0
-                  then rnum := rnum * t
-                  else rnum := rnum / t
-               end
+      else if k + e < emin	{小于最小值}
+           then rnum := 0	{精度不够了,直接记为零}
+	  else begin
+			s := abs(e);
+			t := 1.0;
+			d := 10.0;
+			repeat
+				while not odd(s) do	{把偶次幂先用平方处理完}
+				  begin
+					s := s div 2;
+					d := sqr(d)	{sqr表示平方}
+				  end;
+				s := s - 1;
+				t := d * t	{在乘一下自己,完成1次,即将e分解为2N+1或2N的形式}
+			until s = 0;	{t此时为10的e次方}
+			if e >= 0	
+			then rnum := rnum * t	{e大于零就乘10的e次方}
+			else rnum := rnum / t	{反之除}
+		   end
      end { adjustscale };
 
-  procedure options;
-    procedure switch( var b: boolean );
+  procedure options;	{编译选项}
+    procedure switch( var b: boolean );	{处理编译选项中的'+''-'号}
       begin
-        b := ch = '+';
-        if not b
-        then if not( ch = '-' )
-             then begin { print error message }
-                    while( ch <> '*' ) and ( ch <> ',' ) do
+        b := ch = '+';	{判断当前符号是否为'+'并存入b中返回,注意pascal中变量形参传的是地址}
+        if not b	{如果不是加号}
+        then if not( ch = '-' )	{如果也不是减号}
+             then begin { print error message }	{输出错误信息}
+                    while( ch <> '*' ) and ( ch <> ',' ) do	{跳过无用符号}
                       nextch;
                   end
              else nextch
         else nextch
       end { switch };
-    begin { options  }
+    begin { options  }	{处理编译选项}
       repeat
         nextch;
-        if ch <> '*'
+        if ch <> '*'	{编译选项为*$t+,s+*的形式}
         then begin
-               if ch = 't'
+               if ch = 't'	{字母t表示与打印相关的操作}
                then begin
                       nextch;
-                      switch( prtables )
+                      switch( prtables )	{根据符号判断是否打印表格}
                     end
-               else if ch = 's'
+               else if ch = 's'	{s表示卸出打印}
                   then begin
                           nextch;
-                          switch( stackdump )
+                          switch( stackdump )	
                        end;
-
              end
       until ch <> ','
     end { options };
   begin { insymbol  }
-  1: while( ch = ' ' ) or ( ch = chr(9) ) do
+  1: while( ch = ' ' ) or ( ch = chr(9) ) do	{第一个flag立起来了! chr可以获得9号字符,即跳过所有的空格和\t}
        nextch;    { space & htab }
     case ch of
       'a','b','c','d','e','f','g','h','i',
       'j','k','l','m','n','o','p','q','r',
       's','t','u','v','w','x','y','z':
-        begin { identifier of wordsymbol }
+        begin { identifier of wordsymbol }	{如果是字母,开始识别单词}
           k := 0;
           id := '          ';
           repeat
-            if k < alng
+            if k < alng	{alng是限定的关键词长度}
             then begin
                    k := k + 1;
                    id[k] := ch
@@ -323,7 +322,7 @@ procedure readscale;
             nextch
           until not((( ch >= 'a' ) and ( ch <= 'z' )) or (( ch >= '0') and (ch <= '9' )));
           i := 1;
-          j := nkw; { binary search }
+          j := nkw; { binary search }	{二分查表,找到当前id在表中的位置}
           repeat
             k := ( i + j ) div 2;
             if id <= key[k]
@@ -332,45 +331,45 @@ procedure readscale;
             then i := k + 1;
           until i > j;
           if i - 1 > j
-          then sy := ksy[k]
-          else sy := ident
+          then sy := ksy[k]	{获取当前ID对应的sym}
+          else sy := ident	{没有找到即为标识符}
         end;
-      '0','1','2','3','4','5','6','7','8','9':
+      '0','1','2','3','4','5','6','7','8','9':	{数字开始当做数字识别}
         begin { number }
           k := 0;
           inum := 0;
-          sy := intcon;
+          sy := intcon;	{sy设为intcon表示数字}
           repeat
-            inum := inum * 10 + ord(ch) - ord('0');
-            k := k + 1;
+            inum := inum * 10 + ord(ch) - ord('0');	{把整数部分读完,存到inum}
+            k := k + 1;	{k统计当前数字位数}
             nextch
-          until not (( ch >= '0' ) and ( ch <= '9' ));
-          if( k > kmax ) or ( inum > nmax )
+          until not (( ch >= '0' ) and ( ch <= '9' ));	
+          if( k > kmax ) or ( inum > nmax )	{超上限报错}
           then begin
                  error(21);
                  inum := 0;
                  k := 0
                end;
-          if ch = '.'
+          if ch = '.'	{开始读小数}
           then begin
                  nextch;
                  if ch = '.'
                  then ch := ':'
                  else begin
-                        sy := realcon;
-                        rnum := inum;
-                        e := 0;
-                        while ( ch >= '0' ) and ( ch <= '9' ) do
+                        sy := realcon;	{sym为实数}
+                        rnum := inum;	{rnum存实数的值}
+                        e := 0;	{指数}
+                        while ( ch >= '0' ) and ( ch <= '9' ) do	{把数字读完}
                           begin
                             e := e - 1;
-                            rnum := 10.0 * rnum + (ord(ch) - ord('0'));
+                            rnum := 10.0 * rnum + (ord(ch) - ord('0'));	{暂时当做整数存}
                             nextch
                           end;
-                        if e = 0
+                        if e = 0	{小数点后没数字,40号error}
                         then error(40);
-                        if ch = 'e'
-                        then readscale;
-                        if e <> 0 then adjustscale
+                        if ch = 'e'	{如果是科学计数法}
+                        then readscale;	{算e}
+                        if e <> 0 then adjustscale	{算数,rnum存数}
                       end
                 end
           else if ch = 'e'
@@ -424,12 +423,12 @@ procedure readscale;
           nextch;
           if ch = '.'
           then begin
-                 sy := colon;
+                 sy := colon;	{..居然算作colon分号}
                  nextch
                end
           else sy := period
         end;
-      '''':
+      '''':	{使用双引号来识别字符串}
         begin
           k := 0;
    2:     nextch;
@@ -486,19 +485,19 @@ procedure readscale;
       '{':
         begin
           nextch;
-          if ch = '$'
+          if ch = '$'	{左括号加$是进行编译选项的设置}
           then options;
           while ch <> '}' do
             nextch;
           nextch;
           goto 1
         end;
-      '+', '-', '*', '/', ')', '=', ',', '[', ']', ';':
+      '+', '-', '*', '/', ')', '=', ',', '[', ']', ';':	{操作符直接处理}
         begin
           sy := sps[ch];
           nextch
         end;
-      '$','"' ,'@', '?', '&', '^', '!':
+      '$','"' ,'@', '?', '&', '^', '!':	{单独出现算错}
         begin
           error(24);
           nextch;
@@ -507,7 +506,7 @@ procedure readscale;
       end { case }
     end { insymbol };
 
-procedure enter(x0:alfa; x1:objecttyp; x2:types; x3:integer );
+procedure enter(x0:alfa; x1:objecttyp; x2:types; x3:integer );	{将当前符号录入符号表}
   begin
     t := t + 1;    { enter standard identifier }
     with tab[t] do
@@ -523,7 +522,7 @@ procedure enter(x0:alfa; x1:objecttyp; x2:types; x3:integer );
       end
   end; { enter }
 
-procedure enterarray( tp: types; l,h: integer );
+procedure enterarray( tp: types; l,h: integer );	{将数组信息录入数组表atab}
   begin
     if l > h
     then error(27);
@@ -533,14 +532,14 @@ procedure enterarray( tp: types; l,h: integer );
            l := 0;
            h := 0;
          end;
-    if a = amax
-    then fatal(4)
+    if a = amax	{表满了}
+    then fatal(4)	
     else begin
            a := a + 1;
            with atab[a] do
              begin
-               inxtyp := tp;
-               low := l;
+               inxtyp := tp;	{下标类型}
+               low := l;	{上界和下界}
                high := h
              end
          end
@@ -548,16 +547,16 @@ procedure enterarray( tp: types; l,h: integer );
 
 procedure enterblock;
   begin
-    if b = bmax
+    if b = bmax	{表满了}
     then fatal(2)
     else begin
            b := b + 1;
-           btab[b].last := 0;
-           btab[b].lastpar := 0;
+           btab[b].last := 0;		
+           btab[b].lastpar := 0;	{指向过程或者函数的最后一个参数在tab中的位置}
          end
   end { enterblock };
 
-procedure enterreal( x: real );
+procedure enterreal( x: real );	{实常量表}
   begin
     if c2 = c2max - 1
     then fatal(3)
@@ -571,7 +570,7 @@ procedure enterreal( x: real );
          end
   end { enterreal };
 
-procedure emit( fct: integer );
+procedure emit( fct: integer );	{emit和下面两个方法都是用来生成PCODE的}
   begin
     if lc = cmax
     then fatal(6);
@@ -604,13 +603,13 @@ procedure emit2( fct, a, b: integer );
     lc := lc + 1;
 end { emit2 };
 
-procedure printtables;
+procedure printtables;	{打印表的过程}
   var i: integer;
   o: order;
       mne: array[0..omax] of
            packed array[1..5] of char;
   begin
-    mne[0] := 'LDA  ';   mne[1] := 'LOD  ';  mne[2] := 'LDI  ';
+    mne[0] := 'LDA  ';   mne[1] := 'LOD  ';  mne[2] := 'LDI  ';	{定义PCODE指令符}
     mne[3] := 'DIS  ';   mne[8] := 'FCT  ';  mne[9] := 'INT  ';
     mne[10] := 'JMP  ';   mne[11] := 'JPC  ';  mne[12] := 'SWT  ';
     mne[13] := 'CAS  ';   mne[14] := 'F1U  ';  mne[15] := 'F2U  ';
@@ -636,7 +635,7 @@ procedure printtables;
     writeln(psout);
     writeln(psout,'   identifiers  link  obj  typ  ref  nrm  lev  adr');
     writeln(psout);
-    for i := btab[1].last to t do
+    for i := btab[1].last to t do	{}
       with tab[i] do
         writeln( psout, i,' ', name, link:5, ord(obj):5, ord(typ):5,ref:5, ord(normal):5,lev:5,adr:5);
     writeln( psout );
@@ -677,7 +676,7 @@ procedure printtables;
   end { printtables };
 
 
-procedure block( fsys: symset; isfun: boolean; level: integer );
+procedure block( fsys: symset; isfun: boolean; level: integer );	{程序分析过程}
   type conrec = record
                   case tp: types of
                     ints, chars, bools : ( i:integer );
@@ -689,7 +688,7 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
       x  : integer ;
 
 
-  procedure skip( fsys:symset; n:integer);
+  procedure skip( fsys:symset; n:integer);	{跳过错误的代码段}
     begin
       error(n);
       skipflag := true;
@@ -698,13 +697,13 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
       if skipflag then endskip
     end { skip };
 
-  procedure test( s1,s2: symset; n:integer );
+  procedure test( s1,s2: symset; n:integer );	{检查当前sym是否合法}
     begin
       if not( sy in s1 )
       then skip( s1 + s2, n )
     end { test };
 
-  procedure testsemicolon;
+  procedure testsemicolon;	{检查分号是否合法}
     begin
       if sy = semicolon
       then insymbol
@@ -717,20 +716,20 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
     end { testsemicolon };
 
 
-  procedure enter( id: alfa; k:objecttyp );
+  procedure enter( id: alfa; k:objecttyp );	{将将分程序中的某一符号入符号表}
     var j,l : integer;
     begin
-      if t = tmax
+      if t = tmax	{表满了报错退出}
       then fatal(1)
       else begin
-             tab[0].name := id;
-             j := btab[display[level]].last;
-             l := j;
-             while tab[j].name <> id do
+             tab[0].name := id;	
+             j := btab[display[level]].last;	{获取指向当前层最后一个标识符在tab表中的位置}	
+             l := j;	
+             while tab[j].name <> id do	
                j := tab[j].link;
-             if j <> 0
+             if j <> 0	{j不等于0说明此符号已经在符号表中出现过,报1号错误,意味着重复定义了}
              then error(1)
-             else begin
+             else begin	{没重复定义就正常入栈}
                     t := t + 1;
                     with tab[t] do
                       begin
@@ -743,12 +742,12 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
                         adr := 0;
                         normal := false { initial value }
                       end;
-                    btab[display[level]].last := t
+                    btab[display[level]].last := t	{更新当前层最后一个标识符}
                   end
            end
     end { enter };
 
-  function loc( id: alfa ):integer;
+  function loc( id: alfa ):integer;	{查找id在符号表中的位置}
     var i,j : integer;        { locate if in table }
     begin
       i := level;
@@ -756,15 +755,15 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
       repeat
         j := btab[display[i]].last;
         while tab[j].name <> id do
-        j := tab[j].link;
-       i := i - 1;
+		  j := tab[j].link;
+        i := i - 1;
       until ( i < 0 ) or ( j <> 0 );
-      if j = 0
+      if j = 0	{符号没找到,说明之前没声明,报0号错误}
       then error(0);
       loc := j
     end { loc } ;
 
-  procedure entervariable;
+  procedure entervariable;	{变量登陆符号表的过程}
     begin
       if sy = ident
       then begin
@@ -774,14 +773,14 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
       else error(2)
     end { entervariable };
 
-  procedure constant( fsys: symset; var c: conrec );
+  procedure constant( fsys: symset; var c: conrec );	{处理程序中出现的常量,变量c负责返回该常量的类型和值}
     var x, sign : integer;
     begin
       c.tp := notyp;
       c.i := 0;
       test( constbegsys, fsys, 50 );
-      if sy in constbegsys
-      then begin
+      if sy in constbegsys	{如果第一个sym是常量开始的符号,才往下继续分析}
+      then begin	{根据不同的符号执行不同的操作,目的就是返回正确的c}
              if sy = charcon
              then begin
                     c.tp := chars;
@@ -829,15 +828,15 @@ procedure block( fsys: symset; isfun: boolean; level: integer );
            end
     end { constant };
 
-procedure typ( fsys: symset; var tp: types; var rf,sz:integer );
-    var eltp : types;
-        elrf, x : integer;
+procedure typ( fsys: symset; var tp: types; var rf,sz:integer );	{处理类型说明}
+    var eltp : types;	{元素类型}
+        elrf, x : integer;	
         elsz, offset, t0, t1 : integer;
 
-    procedure arraytyp( var aref, arsz: integer );
-      var eltp : types;
+    procedure arraytyp( var aref, arsz: integer );	{处理数组类型的子过程}
+      var eltp : types;	
          low, high : conrec;
-         elrf, elsz: integer;
+         elrf, elsz: integer;	{}
       begin
         constant( [colon, rbrack, rparent, ofsy] + fsys, low );
         if low.tp = reals
@@ -2653,7 +2652,7 @@ begin
 
 procedure setup;
   begin
-    key[1] := 'and       ';
+    key[1] := 'and       ';	{定义一系列保留字}
     key[2] := 'array     ';
     key[3] := 'begin     ';
     key[4] := 'case      ';
@@ -2681,7 +2680,7 @@ procedure setup;
     key[26] := 'var       ';
     key[27] := 'while     ';
 
-    ksy[1] := andsy;
+    ksy[1] := andsy;	{定义保留字对应的符号}
     ksy[2] := arraysy;
     ksy[3] := beginsy;
     ksy[4] := casesy;
@@ -2710,7 +2709,7 @@ procedure setup;
     ksy[27] := whilesy;
 
 
-    sps['+'] := plus;
+    sps['+'] := plus;	{定义特殊字符对应的sym}
     sps['-'] := minus;
     sps['*'] := times;
     sps['/'] := rdiv;
@@ -2725,8 +2724,8 @@ procedure setup;
     sps[';'] := semicolon;
   end { setup };
 
-procedure enterids;
-  begin
+procedure enterids;	{这个过程负责将全部标准类型的信息登陆到table中}
+  begin	
     enter('          ',vvariable,notyp,0); { sentinel }
     enter('false     ',konstant,bools,0);
     enter('true      ',konstant,bools,1);
@@ -2760,11 +2759,11 @@ procedure enterids;
 
 
 begin  { main }    
-  setup;
-  constbegsys := [ plus, minus, intcon, realcon, charcon, ident ];
-  typebegsys := [ ident, arraysy, recordsy ];
-  blockbegsys := [ constsy, typesy, varsy, procsy, funcsy, beginsy ];
-  facbegsys := [ intcon, realcon, charcon, ident, lparent, notsy ];
+  setup;	{初始化变量}
+  constbegsys := [ plus, minus, intcon, realcon, charcon, ident ];	{常量的开始符号集合}
+  typebegsys := [ ident, arraysy, recordsy ];	{类型的开始符号集合}
+  blockbegsys := [ constsy, typesy, varsy, procsy, funcsy, beginsy ];	{分语句的开始符号集合}
+  facbegsys := [ intcon, realcon, charcon, ident, lparent, notsy ];		
   statbegsys := [ beginsy, ifsy, whilesy, repeatsy, forsy, casesy ];
   stantyps := [ notyp, ints, reals, bools, chars ];
   lc := 0;
