@@ -677,7 +677,7 @@ procedure printtables;	{打印表的过程}
 
 
 procedure block( fsys: symset; isfun: boolean; level: integer );	{程序分析过程}
-  type conrec = record
+  type conrec = record	{这种结构体可以根据不同的type类型来保存不同样式的数据}
                   case tp: types of
                     ints, chars, bools : ( i:integer );
                     reals :( r:real )
@@ -1351,236 +1351,236 @@ procedure statement( fsys:symset );
           procedure factor( fsys: symset; var x: item );{处理因子的子过程}
             var i,f : integer;
 
-            procedure standfct( n: integer );	{处理标准函数的子过程，传入标准函数的编号，执行不同的操作}
-              var ts : typset;	
+            procedure standfct( n: integer );	{处理标准函数的子过程，传入标准函数的编号n，执行不同的操作}
+              var ts : typset;	{类型集合}
               begin  { standard function no. n }
-                if sy = lparent
-                then insymbol
-                else error(9);
-                if n < 17
+                if sy = lparent	{如果当前的符号是左括号}
+                then insymbol	{获取下一个sym}
+                else error(9);	{如果当前符号不是左括号,报9号错误提示左括号出错}
+                if n < 17	{如果标准函数的编号小于17}
                 then begin
-                       expression( fsys+[rparent], x );
-                       case n of
-                       { abs, sqr } 0,2: begin
-                                           ts := [ints, reals];
-                                           tab[i].typ := x.typ;
-                                           if x.typ = reals
-                                           then n := n + 1
+                       expression( fsys+[rparent], x );	{递归调用处理表达式的过程来处理参数,x是获取的参数的信息}
+                       case n of	{根据不同的函数编号来进行操作}
+                       { abs, sqr } 0,2: begin	{如果是0,2号操作,完成求绝对值和平方}
+                                           ts := [ints, reals];	{定义符号集合为整型和实型}
+                                           tab[i].typ := x.typ;	{函数的返回值类型}
+                                           if x.typ = reals	{如果参数类型是实数}
+                                           then n := n + 1	{对应的函数标号+1}
                                      end;
-                       { odd, chr } 4,5: ts := [ints];
-                       { odr }        6: ts := [ints,bools,chars];
-                       { succ,pred } 7,8 : begin
-                                             ts := [ints, bools,chars];
-                                             tab[i].typ := x.typ
+                       { odd, chr } 4,5: ts := [ints];	{如果是4,5号操作,那么完成判奇和ascii码转化成字符的操作,要求传入的是脏呢挂车能}
+                       { odr }        6: ts := [ints,bools,chars];	{6号操作允许类型是整型,布尔型或者字符型}
+                       { succ,pred } 7,8 : begin	{对于7,8号操作}
+                                             ts := [ints, bools,chars];	{允许参数类型是整型,布尔型或者字符型}}
+                                             tab[i].typ := x.typ	{记录类型}
                                        end;
-                       { round,trunc } 9,10,11,12,13,14,15,16:
+                       { round,trunc } 9,10,11,12,13,14,15,16:	{数学运算}
                        { sin,cos,... }     begin
-                                             ts := [ints,reals];
-                                             if x.typ = ints
-                                             then emit1(26,0)
+                                             ts := [ints,reals];	{允许参数类型为整型,实型}
+                                             if x.typ = ints	{如果为整型}
+                                             then emit1(26,0)	{先将整型转成实型}
                                        end;
                      end; { case }
-                     if x.typ in ts
-                     then emit1(8,n)
-                     else if x.typ <> notyp
-                          then error(48);
+                     if x.typ in ts	{如果函数的类型符合要求的符号集}
+                     then emit1(8,n)	{调用8号指令,生成标准函数}
+                     else if x.typ <> notyp	{如果x的类型未定义}
+                          then error(48);	{报48号错误,类型错误}
                    end
-                else begin { n in [17,18] }
-                       if sy <> ident
-                       then error(2)
-                       else if id <> 'input    '
-                            then error(0)
-                            else insymbol;
-                       emit1(8,n);
+                else begin { n in [17,18] }	{如果编号是17或者18,即判断输入是否结束}
+                       if sy <> ident	{传入的首先应当是标识符}
+                       then error(2)	{不是标识符报错}
+                       else if id <> 'input    '	{如果对应的id不是'input    '}
+                            then error(0)	{报0号错误,未知id}
+                            else insymbol;	{没错的话读取下一个sym}
+                       emit1(8,n);	{生成标准函数}
                      end;
-                x.typ := tab[i].typ;
-                if sy = rparent
-                then insymbol
-                else error(4)
+                x.typ := tab[i].typ;	{记录返回值类型}
+                if sy = rparent	{识别是否遇到右括号}
+                then insymbol	{获取下一个sym,标准函数处理过程结束}
+                else error(4)	{如果没有识别到右括号,报4号错误}
               end { standfct } ;
-            begin { factor }
-              x.typ := notyp;
-              x.ref := 0;
-              test( facbegsys, fsys,58 );
-              while sy in facbegsys do
+            begin { factor }	{因子分析程序开始}
+              x.typ := notyp;	{初始化返回值类型}
+              x.ref := 0;		{初始化返回的位置指针}
+              test( facbegsys, fsys,58 );	{检查当前的符号是否是合法的因子开始符号}
+              while sy in facbegsys do	{当当前的符号是因子的开始符号时}
                 begin
-                  if sy = ident
+                  if sy = ident	{如果识别到标识符}
                   then begin
-                         i := loc(id);
-                         insymbol;
-                         with tab[i] do
-                           case obj of
-                             konstant: begin
-                                         x.typ := typ;
-                                         x.ref := 0;
-                                         if x.typ = reals
-                                         then emit1(25,adr)
-                                         else emit1(24,adr)
+                         i := loc(id);	{获取当前标识符在符号表中的位置保存到i}
+                         insymbol;		{获取下一个sym}
+                         with tab[i] do	{对当前符号对应的表项进行操作}
+                           case obj of	{对于不同的obj属性执行不同的操作}
+                             konstant: begin	{如果是常量类型}
+                                         x.typ := typ;	{返回值的类型就设置为表中记录的typ}
+                                         x.ref := 0;	{索引值设置为0}
+                                         if x.typ = reals	{如果是实数类型的常量}
+                                         then emit1(25,adr)	{将实数装入数据栈,注意实数常量的adr对应着其在rconst实常量表中的位置}
+                                         else emit1(24,adr)	{如果是整型直接存入栈顶即可}
                                      end;
-                             vvariable:begin
-                                         x.typ := typ;
-                                         x.ref := ref;
-                                         if sy in [lbrack, lparent,period]
+                             vvariable:begin	{如果换成变量类型}
+											 x.typ := typ;	{获得需要返回类型}
+											 x.ref := ref;	{获得需要返回地址}
+                                         if sy in [lbrack, lparent,period]	{如果标识符后面跟的是左方括号,左括号或者是句号,说明该变量存在子结构}
                                          then begin
-                                                if normal
-                                                then f := 0
-                                                else f := 1;
-                                                emit2(f,lev,adr);
-                                                selector(fsys,x);
-                                                if x.typ in stantyps
-                                                then emit(34)
+                                                if normal	{如果是实形参}
+                                                then f := 0	{取地址}
+                                                else f := 1;	{否则是变量形参,取值并放到栈顶}
+                                                emit2(f,lev,adr);	{生成对应的代码}
+                                                selector(fsys,x);	{处理子结构}
+                                                if x.typ in stantyps	{如果是标准类型}	{存疑}
+                                                then emit(34)	{将该值放到栈顶}
                                               end
-                                         else begin
-                                                if x.typ in stantyps
-                                                then if normal
-                                                     then f := 1
-                                                     else f := 2
-                                                else if normal
-                                                     then f := 0
-                                                else f := 1;
-                                                emit2(f,lev,adr)
+                                         else begin	{如果变量没有层次结构}
+                                                if x.typ in stantyps	{如果是标准类型}
+                                                then if normal	{如果是值形参}
+                                                     then f := 1	{执行取值操作}
+                                                     else f := 2	{否则间接取值}
+                                                else if normal	{如果不是标准类型但是是值形参}
+                                                     then f := 0	{取地址操作}
+                                                else f := 1;	{如果既不是标准类型又不是值形参,执行取值操作}
+                                                emit2(f,lev,adr)	{生成对应指令}
                                              end
                                        end;
-                             typel,prozedure: error(44);
-                             funktion: begin
-                                         x.typ := typ;
-                                         if lev <> 0
-                                         then call(fsys,i)
-                                         else standfct(adr)
+                             typel,prozedure: error(44);	{如果是类型类型或者过程类型,报44号类型错误}
+                             funktion: begin	{如果是函数符号}
+                                         x.typ := typ;	{记录类型}
+                                         if lev <> 0	{如果层次不为0,即不是标准函数}
+                                         then call(fsys,i)	{调用call函数来处理函数调用}
+                                         else standfct(adr)	{如果层次为零,调用标准函数}
                                        end
                            end { case,with }
                        end
-                  else if sy in [ charcon,intcon,realcon ]
+                  else if sy in [ charcon,intcon,realcon ]	{如果符号的类型是字符类型,整数类型或者实数类型}
                        then begin
-                              if sy = realcon
+                              if sy = realcon	{对于实数类型}
                               then begin
-                                     x.typ := reals;
-                                     enterreal(rnum);
-                                     emit1(25,c1)
+                                     x.typ := reals;	{将返回的type设置为实型}
+                                     enterreal(rnum);	{将该实数放入实数表,rnum存有实数的值}
+                                     emit1(25,c1)	{将实常量表中第c1个(也就是刚刚放进去的)元素放入栈顶}
                                    end
                               else begin
-                                     if sy = charcon
-                                     then x.typ := chars
-                                     else x.typ := ints;
-                                     emit1(24,inum)
+                                     if sy = charcon	{对于字符类型}
+                                     then x.typ := chars	{记录返回的类型是字符型}
+                                     else x.typ := ints;	{否则肯定是整形啦,要不进不来这个分支}
+                                     emit1(24,inum)	{装入字面变量,可以看出字符型装的是ascii码值}
                                    end;
-                              x.ref := 0;
-                              insymbol
+                              x.ref := 0;	{返回的ref设置为0}
+                              insymbol	{获取下一个sym}
                             end
-                       else if sy = lparent
-                            then begin
-                                   insymbol;
-                                   expression(fsys + [rparent],x);
-                                   if sy = rparent
-                                   then insymbol
-                                   else error(4)
-                                 end
-                             else if sy = notsy
-                                  then begin
-                                         insymbol;
-                                         factor(fsys,x);
-                                         if x.typ = bools
-                                         then emit(35)
-                                         else if x.typ <> notyp
-                                              then error(32)
-                                       end;
-                  test(fsys,facbegsys,6)
+				   else if sy = lparent		{如果符号的类型是左括号}
+						then begin
+							   insymbol;	{获取下一个sym}
+							   expression(fsys + [rparent],x);	{调用处理表达式的递归子程序处理括号中的表达式}
+							   if sy = rparent	{如果遇到了右括号}	
+							   then insymbol	{获取下一个sym}
+							   else error(4)	{没有右括号报4号错误}
+							 end
+				   else if sy = notsy	{如果符号的类型未定义}
+					   then begin
+							  insymbol;	{获取下一个sym}
+							  factor(fsys,x);	{递归调用因子的分析子程序}
+							  if x.typ = bools	{如果返回的类型是布尔型}
+							  then emit(35)		{生成逻辑非指令}
+							  else if x.typ <> notyp	{如果因子的类型依旧未定义}
+								   then error(32)	{生成32指令,退出过程}
+						   end;
+                  test(fsys,facbegsys,6)	{检查当前符号是否合法}
                 end { while }
             end { factor };
-          begin { term   }
-            factor( fsys + [times,rdiv,idiv,imod,andsy],x);
-            while sy in [times,rdiv,idiv,imod,andsy] do
+          begin { term   }	{开始处理项(term)}
+            factor( fsys + [times,rdiv,idiv,imod,andsy],x);	{调用因子的分析程序开分析每一个因子项}
+            while sy in [times,rdiv,idiv,imod,andsy] do	{如果因子后面跟符号'*''/''div''mod''and',说明后面还有因子,进入循环}
               begin
-                op := sy;
-                insymbol;
-                factor(fsys+[times,rdiv,idiv,imod,andsy],y );
-                if op = times
+                op := sy;	{运算符是sy所代表的类型}
+                insymbol;	{获取下一个sym}
+                factor(fsys+[times,rdiv,idiv,imod,andsy],y );	{继续调用因子分析程序来分析因子,获得第二个运算数存为y}
+                if op = times	{如果遇到了乘号}
                 then begin
-                       x.typ := resulttype(x.typ, y.typ);
+                       x.typ := resulttype(x.typ, y.typ);	{求出计算之后结果的类型}
                        case x.typ of
-                         notyp: ;
-                         ints : emit(57);
-                         reals: emit(60);
+                         notyp: ;	{未定义类型不干事儿}
+                         ints : emit(57);	{整数生成整数乘指令}
+                         reals: emit(60);	{实数生成实数乘指令}
                        end
                      end
-                else if op = rdiv
+                else if op = rdiv	{除法运算}
                      then begin
                             if x.typ = ints
                             then begin
-                                   emit1(26,1);
+                                   emit1(26,1);	{整型转实型}
                                    x.typ := reals;
                                  end;
                             if y.typ = ints
                             then begin
-                                   emit1(26,0);
+                                   emit1(26,0);	{整型转实型}
                                    y.typ := reals;
                                  end;
                             if (x.typ = reals) and (y.typ = reals)
-                            then emit(61)
+                            then emit(61)	{实型除法}
                             else begin
                                    if( x.typ <> notyp ) and (y.typ <> notyp)
                                    then error(33);
                                    x.typ := notyp
                                  end
                           end
-                     else if op = andsy
+                     else if op = andsy	{与运算}
                           then begin
-                                 if( x.typ = bools )and(y.typ = bools)
-                                 then emit(56)
+                                 if( x.typ = bools )and(y.typ = bools)	{必须两个运算数都是布尔类型}
+                                 then emit(56)	{生成逻辑与运算}
                                  else begin
-                                        if( x.typ <> notyp ) and (y.typ <> notyp)
+                                        if( x.typ <> notyp ) and (y.typ <> notyp)	{类型不对报错,提示应该是布尔值}
                                         then error(32);
                                         x.typ := notyp
                                       end
                                end
                           else begin { op in [idiv,imod] }
                                  if (x.typ = ints) and (y.typ = ints)
-                                 then if op = idiv
-                                      then emit(58)
-                                      else emit(59)
+                                 then if op = idiv	{如果是除法}
+										then emit(58)	{生成除法运算的代码}
+                                      else emit(59)	{否则生成取模运算的代码}
                                  else begin
                                         if ( x.typ <> notyp ) and (y.typ <> notyp)
-                                        then error(34);
+                                        then error(34);	{类型出错报错}
                                         x.typ := notyp
                                       end
                                end
               end { while }
           end { term };
-        begin { simpleexpression }
-          if sy in [plus,minus]
+        begin { simpleexpression }	{开始处理简单表达式}
+          if sy in [plus,minus]	{获得的是加减号}
           then begin
-                 op := sy;
+                 op := sy;	{记录运算符}
                  insymbol;
-                 term( fsys+[plus,minus],x);
-                 if x.typ > reals
-                 then error(33)
-                 else if op = minus
-                      then emit(36)
+                 term( fsys+[plus,minus],x);	{处理项}
+                 if x.typ > reals	{类型是 bools, chars, arrays, records}
+                 then error(33)		{由于不是算数运算类型,报错}
+                 else if op = minus	{如果是减号}
+                      then emit(36)	{去相反数}
                end
-          else term(fsys+[plus,minus,orsy],x);
+          else term(fsys+[plus,minus,orsy],x);	
           while sy in [plus,minus,orsy] do
             begin
               op := sy;
               insymbol;
               term(fsys+[plus,minus,orsy],y);
-              if op = orsy
+              if op = orsy	{如果是or关键字}
               then begin
-                     if ( x.typ = bools )and(y.typ = bools)
-                     then emit(51)
+                     if ( x.typ = bools )and(y.typ = bools)	{操作数限定为bool}
+                     then emit(51)	{生成OR指令}
                      else begin
-                            if( x.typ <> notyp) and (y.typ <> notyp)
+                            if( x.typ <> notyp) and (y.typ <> notyp)	{类型不对报错}
                             then error(32);
                             x.typ := notyp
                           end
                    end
               else begin
-                     x.typ := resulttype(x.typ,y.typ);
+                     x.typ := resulttype(x.typ,y.typ);	
                      case x.typ of
                        notyp: ;
-                       ints: if op = plus
+                       ints: if op = plus	{整数加减}
                              then emit(52)
                              else emit(53);
-                       reals:if op = plus
+                       reals:if op = plus	{实数加减}
                              then emit(54)
                              else emit(55)
                      end { case }
@@ -1589,13 +1589,13 @@ procedure statement( fsys:symset );
           end { simpleexpression };
       begin { expression  }
         simpleexpression(fsys+[eql,neq,lss,leq,gtr,geq],x);
-        if sy in [ eql,neq,lss,leq,gtr,geq]
+        if sy in [ eql,neq,lss,leq,gtr,geq]	{判别多种数值比较符号}
         then begin
                op := sy;
                insymbol;
-               simpleexpression(fsys,y);
-               if(x.typ in [notyp,ints,bools,chars]) and (x.typ = y.typ)
-               then case op of
+               simpleexpression(fsys,y);	{获得第二个简单表达式的值}
+               if(x.typ in [notyp,ints,bools,chars]) and (x.typ = y.typ)	{整型,布尔和字符都可以借用整型的运算}{notyp为什么出现?}
+               then case op of	{根据不同的符号来生成不同的PCODE}
                       eql: emit(45);
                       neq: emit(46);
                       lss: emit(47);
@@ -1614,7 +1614,7 @@ procedure statement( fsys:symset );
                                   y.typ := reals;
                                   emit1(26,0)
                                 end;
-                      if ( x.typ = reals)and(y.typ=reals)
+                      if ( x.typ = reals)and(y.typ=reals)	{对于实数同样生成不同的PCODE}
                       then case op of
                              eql: emit(39);
                              neq: emit(40);
@@ -1629,34 +1629,34 @@ procedure statement( fsys:symset );
              end
       end { expression };
 
-    procedure assignment( lv, ad: integer );
+    procedure assignment( lv, ad: integer );	{处理赋值语句的过程}
       var x,y: item;
           f  : integer;
-      begin   { tab[i].obj in [variable,prozedure] }
-        x.typ := tab[i].typ;
+      begin   { tab[i].obj in [variable,prozedure] }	{当且仅当当前符号表的目标类型为变量或者过程型时}
+        x.typ := tab[i].typ;	
         x.ref := tab[i].ref;
         if tab[i].normal
         then f := 0
         else f := 1;
         emit2(f,lv,ad);
         if sy in [lbrack,lparent,period]
-        then selector([becomes,eql]+fsys,x);
-        if sy = becomes
+        then selector([becomes,eql]+fsys,x);	{处理下标}
+        if sy = becomes	{赋值符号}
         then insymbol
         else begin
                error(51);
-               if sy = eql
+               if sy = eql	{等号容错}
                then insymbol
              end;
-        expression(fsys,y);
+        expression(fsys,y);	{获得赋值符号右边的值}
         if x.typ = y.typ
         then if x.typ in stantyps
-             then emit(38)
+             then emit(38)	{完成赋值操作}
              else if x.ref <> y.ref
                   then error(46)
-                  else if x.typ = arrays
-                       then emit1(23,atab[x.ref].size)
-                       else emit1(23,btab[x.ref].vsize)
+			 else if x.typ = arrays	{数组类型需要拷贝块}
+				  then emit1(23,atab[x.ref].size)	{拷贝atab中的项}
+				  else emit1(23,btab[x.ref].vsize)	{拷贝btab中的记录项}
         else if(x.typ = reals )and (y.typ = ints)
         then begin
                emit1(26,0);
@@ -1712,10 +1712,10 @@ procedure statement( fsys:symset );
         else code[lc1].y := lc
       end { ifstatement };
 
-    procedure casestatement;{keyflag}
+    procedure casestatement;{处理case语句中的标号,将各标号对应的目标代码入口地址填入casetab表中,并检查标号有无重复定义}
       var x : item;
       i,j,k,lc1 : integer;
-      casetab : array[1..csmax]of
+      casetab : array[1..csmax]of	{csmax表示case个数的最大限度}
                      packed record
                        val,lc : index
                      end;
@@ -1725,7 +1725,7 @@ procedure statement( fsys:symset );
         var lab : conrec;
          k : integer;
         begin
-          constant( fsys+[comma,colon],lab );
+          constant( fsys+[comma,colon],lab );	{获得常量的值}
           if lab.tp <> x.typ
           then error(47)
           else if i = csmax
@@ -1794,7 +1794,7 @@ procedure statement( fsys:symset );
         else error(57)
       end { casestatement };
 
-    procedure repeatstatement;{keyflag}
+    procedure repeatstatement;{处理repeat语句的处理过程}
       var x : item;
           lc1: integer;
       begin
@@ -2122,70 +2122,70 @@ procedure interpret;
         writeln( psout, p:14, s[p].i:8);
       writeln(psout,'< = = = >':22)
     end; {dump }
-
+	{以下为不同PCODE所对应的操作}
   procedure inter0;
     begin
       case ir.f of
-        0 : begin { load addrss }	{取地址操作}
+        0 : begin { load addrss }	{取地址操作,LDA}
               t := t + 1;	{栈顶指针上移}
               if t > stacksize	{如果超过了栈的大小上限}
               then ps := stkchk	{将ps设置为stkchk,以记录错误类型}
               else s[t].i := display[ir.x]+ir.y	{完成取值, 实际地址 = level起始地址+位移地址,放到栈顶}
             end;
-        1 : begin  { load value }	{取值操作}
+        1 : begin  { load value }	{取值操作,LOD}
               t := t + 1;	
               if t > stacksize	{检查栈是否溢出,溢出则报错}
               then ps := stkchk
               else s[t] := s[display[ir.x]+ir.y]	{由于传入的是地址,完成取值后将值放到栈顶}
             end;
-        2 : begin  { load indirect }	{间接取值}
+        2 : begin  { load indirect }	{间接取值,LDI}
               t := t + 1;
               if t > stacksize
               then ps := stkchk
               else s[t] := s[s[display[ir.x]+ir.y].i]
             end;
-        3 : begin  { update display }	{更新display}
+        3 : begin  { update display }	{更新display,DIS}
               h1 := ir.y;
               h2 := ir.x;
               h3 := b;
               repeat
-                display[h1] := h3;	{}
+                display[h1] := h3;	
                 h1 := h1-1;	{level-1}
                 h3 := s[h3+2].i
               until h1 = h2
             end;
-        8 : case ir.y of
-              0 : s[t].i := abs(s[t].i);
-              1 : s[t].r := abs(s[t].r);
-              2 : s[t].i := sqr(s[t].i);
-              3 : s[t].r := sqr(s[t].r);
-              4 : s[t].b := odd(s[t].i);
-              5 : s[t].c := chr(s[t].i);
-              6 : s[t].i := ord(s[t].c);
-              7 : s[t].c := succ(s[t].c);
-              8 : s[t].c := pred(s[t].c);
-              9 : s[t].i := round(s[t].r);
-              10 : s[t].i := trunc(s[t].r);
-              11 : s[t].r := sin(s[t].r);
-              12 : s[t].r := cos(s[t].r);
-              13 : s[t].r := exp(s[t].r);
-              14 : s[t].r := ln(s[t].r);
-              15 : s[t].r := sqrt(s[t].r);
-              16 : s[t].r := arcTan(s[t].r);
+        8 : case ir.y of	{标准函数,ir.y是函数的编号,FCT}
+              0 : s[t].i := abs(s[t].i);	{整数x求绝对值}
+              1 : s[t].r := abs(s[t].r);	{实数x求绝对值}
+              2 : s[t].i := sqr(s[t].i);	{整数x求平方}
+              3 : s[t].r := sqr(s[t].r);	{实数x求平方}
+              4 : s[t].b := odd(s[t].i);	{整数x判奇偶性,计数返回1}
+              5 : s[t].c := chr(s[t].i);	{ascii码x转化为字符char}
+              6 : s[t].i := ord(s[t].c);	{字符x转化为ascii码}
+              7 : s[t].c := succ(s[t].c);	{求字符x的后继字符,比如'a'的后继是'b'}
+              8 : s[t].c := pred(s[t].c);	{求字符x的前导字符}
+              9 : s[t].i := round(s[t].r);	{求x的四舍五入}
+              10 : s[t].i := trunc(s[t].r);	{求实数x的整数部分}
+              11 : s[t].r := sin(s[t].r);	{求正弦sin(x),注意x为实数弧度}
+              12 : s[t].r := cos(s[t].r);	{求余弦sin(x),注意x为实数弧度}
+              13 : s[t].r := exp(s[t].r);	{求e^x,x为实数}
+              14 : s[t].r := ln(s[t].r);	{求自然对数ln(x),x为实数}
+              15 : s[t].r := sqrt(s[t].r);	{实数x开方}
+              16 : s[t].r := arcTan(s[t].r);	{反三角函数arctan(x)}
               17 : begin
-                     t := t+1;
+                     t := t+1;	{}
                      if t > stacksize
                      then ps := stkchk
-                     else s[t].b := eof(prd)
+                     else s[t].b := eof(prd)	{判断输入有没有读完}
                    end;
               18 : begin
                      t := t+1;
                      if t > stacksize
                      then ps := stkchk
-                     else s[t].b := eoln(prd)
+                     else s[t].b := eoln(prd)	{判断该行有没有读完}
                    end;
             end;
-        9 : s[t].i := s[t].i + ir.y; { offset }
+        9 : s[t].i := s[t].i + ir.y; { offset }	{将栈顶元素加上y,INT}
       end { case ir.y }
     end; { inter0 }
 
@@ -2315,7 +2315,7 @@ begin
                            s[t].i := s[t].i + (h3-h2)*atab[h1].elsize
                          end
              end;
-        22 : begin  { load block }	{装入块}
+        22 : begin  { load block }	{装入块,LDB}
                h1 := s[t].i;	{获取栈顶值}
                t := t-1;
                h2 := ir.y+t;	{获取需要分配到的空间位置}
@@ -2340,19 +2340,19 @@ begin
                  end;
                t := t-2
              end;
-        24 : begin  { literal }
+        24 : begin  { literal }		{装入字面变量,LDC}
                t := t+1;
                if t > stacksize
                then ps := stkchk
-               else s[t].i := ir.y
+               else s[t].i := ir.y	{对于整型变量y直接装入栈顶}
              end;
-        25 : begin  { load real }
+        25 : begin  { load real }	{读取实数,LDR}
                t := t+1;
                if t > stacksize
                then ps := stkchk
-               else s[t].r := rconst[ir.y]
+               else s[t].r := rconst[ir.y]	{将实常量表中第i个元素放到数据栈的栈顶}
              end;
-        26 : begin  { float }	{整型转实型}
+        26 : begin  { float }	{整型转实型,FLT}
                h1 := t-ir.y;	{获得符号的地址}
                s[h1].r := s[h1].i	{令实型等于整数部分}
              end;
@@ -2413,19 +2413,19 @@ begin
                t := t-2
              end;
         31 : ps := fin;
-        32 : begin  { exit procedure }	{退出过程}
+        32 : begin  { exit procedure }	{退出过程,EXP}
                t := b-1;	{退栈}
                pc := s[b+1].i;	{PC指向RA}
                b := s[b+3].i	{获得返回后的base基址,s[b+3]指向DL}
              end;
-        33 : begin  { exit function }	{退出函数}
+        33 : begin  { exit function }	{退出函数,EXF}
                t := b;	{退栈,注意要保留函数名}
                pc := s[b+1].i;	{PC指向RA}
                b := s[b+3].i	{获得返回后的base基址,s[b+3]指向DL}
              end;
         34 : s[t] := s[s[t].i];
-        35 : s[t].b := not s[t].b;
-        36 : s[t].i := -s[t].i;
+        35 : s[t].b := not s[t].b;	{逻辑非运算,将栈顶布尔值取反,NOT}
+        36 : s[t].i := -s[t].i;		{取整数的相反数操作,MUS}
         37 : begin
                chrcnt := chrcnt + s[t-1].i;
                if chrcnt > lineleng
@@ -2433,11 +2433,11 @@ begin
                else write(prr,s[t-2].r:s[t-1].i:s[t].i);
                t := t-3
              end;
-        38 : begin  { store }
+        38 : begin  { store }	{将栈顶内容存入以次栈顶为地址的单元,STO}
                s[s[t-1].i] := s[t];
                t := t-2
              end;
-        39 : begin
+        39 : begin	{实数相等,EQR}
                t := t-1;
                s[t].b := s[t].r=s[t+1].r
              end;
@@ -2447,43 +2447,43 @@ begin
   procedure inter4;
     begin
       case ir.f of
-        40 : begin
+        40 : begin	{实数不等,NER}
                t := t-1;
                s[t].b := s[t].r <> s[t+1].r
              end;
-        41 : begin
+        41 : begin	{实数小于,LSR}
                t := t-1;
                s[t].b := s[t].r < s[t+1].r
              end;
-        42 : begin
+        42 : begin	{实数小于等于,LER}
                t := t-1;
                s[t].b := s[t].r <= s[t+1].r
              end;
-        43 : begin
+        43 : begin	{实数大于,GTR}
                t := t-1;
                s[t].b := s[t].r > s[t+1].r
              end;
-        44 : begin
+        44 : begin	{实数大于等于,GER}
                t := t-1;
                s[t].b := s[t].r >= s[t+1].r
              end;
-        45 : begin
+        45 : begin	{整数相等,EQL}
                t := t-1;
                s[t].b := s[t].i = s[t+1].i
              end;
-        46 : begin
+        46 : begin	{整型不等,NEQ}
                t := t-1;
                s[t].b := s[t].i <> s[t+1].i
              end;
-        47 : begin
+        47 : begin	{整型小于,LSS}
                t := t-1;
                s[t].b := s[t].i < s[t+1].i
              end;
-        48 : begin
+        48 : begin	{整型小于等于,LEQ}
                t := t-1;
                s[t].b := s[t].i <= s[t+1].i
              end;
-        49 : begin
+        49 : begin	{整型大于,GRT}
                t := t-1;
                s[t].b := s[t].i > s[t+1].i
              end;
@@ -2493,45 +2493,45 @@ begin
   procedure inter5;
     begin
       case ir.f of
-        50 : begin
+        50 : begin	{整型大于等于,GEQ}
                t := t-1;
                s[t].b := s[t].i >= s[t+1].i
              end;
-        51 : begin
+        51 : begin	{OR指令,ORR}
                t := t-1;
                s[t].b := s[t].b or s[t+1].b
              end;
-        52 : begin
+        52 : begin	{整数加,ADD}
                t := t-1;
                s[t].i := s[t].i+s[t+1].i
              end;
-        53 : begin
+        53 : begin	{整数减,SUB}
                t := t-1;
                s[t].i := s[t].i-s[t+1].i
              end;
-        54 : begin
+        54 : begin	{实数加,ADR}
                t := t-1;
                s[t].r := s[t].r+s[t+1].r;
-             end;
-        55 : begin
+             end;	
+        55 : begin	{实数减,SUR}
                t := t-1;
                s[t].r := s[t].r-s[t+1].r;
              end;
-        56 : begin
+        56 : begin	{与运算,AND}
                t := t-1;
                s[t].b := s[t].b and s[t+1].b
              end;
-        57 : begin
+        57 : begin	{整数乘,MUL}
                t := t-1;
                s[t].i := s[t].i*s[t+1].i
              end;
-        58 : begin
+        58 : begin	{整数除法,DIV}
                t := t-1;
                if s[t+1].i = 0
                then ps := divchk
                else s[t].i := s[t].i div s[t+1].i
              end;
-        59 : begin
+        59 : begin	{取模运算,MOD}
                t := t-1;
                if s[t+1].i = 0
                then ps := divchk
@@ -2543,11 +2543,11 @@ begin
   procedure inter6;
     begin
       case ir.f of
-        60 : begin
+        60 : begin	{实数乘}
                t := t-1;
                s[t].r := s[t].r*s[t+1].r;
              end;
-        61 : begin
+        61 : begin	{实数除}
                t := t-1;
                s[t].r := s[t].r/s[t+1].r;
              end;
@@ -2763,7 +2763,7 @@ begin  { main }
   constbegsys := [ plus, minus, intcon, realcon, charcon, ident ];	{常量的开始符号集合}
   typebegsys := [ ident, arraysy, recordsy ];	{类型的开始符号集合}
   blockbegsys := [ constsy, typesy, varsy, procsy, funcsy, beginsy ];	{分语句的开始符号集合}
-  facbegsys := [ intcon, realcon, charcon, ident, lparent, notsy ];		
+  facbegsys := [ intcon, realcon, charcon, ident, lparent, notsy ];		{因子的开始符号集合}
   statbegsys := [ beginsy, ifsy, whilesy, repeatsy, forsy, casesy ];	{statement开始的符号集合}
   stantyps := [ notyp, ints, reals, bools, chars ];	
   lc := 0;		{重置pc}
