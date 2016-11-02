@@ -52,9 +52,9 @@ var   ch : char;      { last character read }	{最后读出的字符}
       a : alfa;	{用来存储symbol的变量}
       code : array[0..cxmax] of instruction;	{用来保存编译后的PCODE代码，最大容量为cxmax}
       word : array[1..norw] of alfa;	{保留字表}
-      wsym : array[1..norw] of symbol	{保留字表中每个保留字对应的symbol类型}
+      wsym : array[1..norw] of symbol;	{保留字表中每个保留字对应的symbol类型}
       ssym : array[char] of symbol;		{符号对应的symbol类型}
-      mnemonic : array[fct] ofW	{助记符}
+      mnemonic : array[fct] of	{助记符}
                    packed array[1..5] of char;
       declbegsys, statbegsys, facbegsys : symset;	{声明开始，表达式开始、项开始的符号集合}
       table : array[0..txmax] of	{定义符号表}
@@ -210,7 +210,7 @@ procedure gen( x: fct; y,z : integer );	{目标代码生成过程,x表示PCODE�
 
 procedure test( s1,s2 :symset; n: integer );	{测试当前字符合法性过程,用于错误语法处理,若不合法则跳过单词值只读到合法单词为止}
   begin
-    if not ( sym in s1 )	(如果当前符号不在s1中)
+    if not ( sym in s1 )	{如果当前符号不在s1中}
     then begin
            error(n);	{报n号错误}
            s1 := s1+s2;	{将s1赋值为s1和s2的集合}
@@ -224,7 +224,7 @@ procedure block( lev,tx : integer; fsys : symset );	{进行语法分析的主程
        tx0: integer;  { initial table index }	{符号表初始索引}
        cx0: integer;  { initial code index }	{初始代码索引}
 
-  procedure `( k : objecttyp ); 	{将对象插入到符号表中}
+  procedure enter( k : objecttyp ); 	{将对象插入到符号表中}
     begin  { enter object into table }	
       tx := tx+1;	{符号表序号加一,指向一个空表项}
       with table[tx] do	{改变tx序号对应表的内容}
@@ -502,7 +502,7 @@ procedure expression( fsys: symset);	{处理表达式的过程}
 										i := position(id);	{记录当前符号在符号表中的位置}
 										if i = 0	{如果i为0,说明符号表中没有找到id对应的符号}
 										then error(11)	{报11号错误}
-										else if table[i].kind <> variable {如果找到了,但该符号的类型不是变量}}
+										else if table[i].kind <> variable {如果找到了,但该符号的类型不是变量}
 											 then begin
 													error(12);	{报12号错误,不能像常量和过程赋值}
 													i := 0	{将i置零}
@@ -784,6 +784,6 @@ begin { main }	{ 主函数 }
   then interpret	{开始解释执行生成的PCODE代码}
   else write('ERRORS IN PL/0 PROGRAM');	{否则出现了错误,报错}
   writeln;	{换行}
-  close(fin)	{关闭源文件程序}
+  close(fin);	{关闭源文件程序}
   readln(sfile);	{读取PL/0源程序}
 end.           

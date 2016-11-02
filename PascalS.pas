@@ -231,7 +231,7 @@ label 1,2,3;	{定义label,为goto的使用做准备}
     begin
       nextch;
       sign := 1;	{符号}
-      s := 0		{数字}
+      s := 0;		{数字}
       if ch = '+'	{如果读到'+',不作处理}
       then nextch
       else if ch = '-'	{如果是'-',符号设为负}
@@ -1373,7 +1373,7 @@ procedure statement( fsys:symset );
                        { odd, chr } 4,5: ts := [ints];	{如果是4,5号操作,那么完成判奇和ascii码转化成字符的操作,要求传入的是脏呢挂车能}
                        { odr }        6: ts := [ints,bools,chars];	{6号操作允许类型是整型,布尔型或者字符型}
                        { succ,pred } 7,8 : begin	{对于7,8号操作}
-                                             ts := [ints, bools,chars];	{允许参数类型是整型,布尔型或者字符型}}
+                                             ts := [ints, bools,chars];	{允许参数类型是整型,布尔型或者字符型}
                                              tab[i].typ := x.typ	{记录类型}
                                        end;
                        { round,trunc } 9,10,11,12,13,14,15,16:	{数学运算}
@@ -1761,7 +1761,7 @@ procedure statement( fsys:symset );
                  else error(5);	{没读到冒号,报5号错误}
                  statement([semicolon,endsy]+fsys);	{递归调用statement来处理冒号之后需要执行的程序}
                  j := j+1;	{用来记录当前case对应exittab的位置}
-                 exittab[j] := lc	{记录当前case分支结束的代码位置,即下面将要生成的跳转指令的位置}
+                 exittab[j] := lc;	{记录当前case分支结束的代码位置,即下面将要生成的跳转指令的位置}
                  emit(10)	{生成一条跳转指令来结束这一case分支}
                end
           end { onecase };
