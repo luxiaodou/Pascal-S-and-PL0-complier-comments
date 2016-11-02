@@ -10,6 +10,9 @@ program PASCALS(INPUT,OUTPUT,PRD,PRR);
 {   further modified by M.Z.Jin
     Department of Computer Science&Engineering BUAA,0ct.1989
 }
+{	comment by Song Lu
+	Department of Computer Science&Engineering BUAA,Nov.2016
+}
 const nkw = 27;    { no. of key words }	{key word应当理解为保留字}
       alng = 10;   { no. of significant chars in identifiers }
       llng = 121;  { input line length }
@@ -1712,115 +1715,115 @@ procedure statement( fsys:symset );
         else code[lc1].y := lc
       end { ifstatement };
 
-    procedure casestatement;{处理case语句中的标号,将各标号对应的目标代码入口地址填入casetab表中,并检查标号有无重复定义}
+    procedure casestatement;{case语句的处理过程}
       var x : item;
-      i,j,k,lc1 : integer;
+      i,j,k,lc1 : integer;	{定义一系列临时变量}
       casetab : array[1..csmax]of	{csmax表示case个数的最大限度}
                      packed record
-                       val,lc : index
+                       val,lc : index	{index表示}
                      end;
           exittab : array[1..csmax] of integer;
 
-      procedure caselabel;
+      procedure caselabel;	{处理case语句中的标号,将各标号对应的目标代码入口地址填入casetab表中,并检查标号有无重复定义}
         var lab : conrec;
          k : integer;
         begin
-          constant( fsys+[comma,colon],lab );	{获得常量的值}
-          if lab.tp <> x.typ
-          then error(47)
-          else if i = csmax
-               then fatal(6)
+          constant( fsys+[comma,colon],lab );	{因为标签都是常量,这里调用处理常量的过程来获得常量的值,存于lab}
+          if lab.tp <> x.typ	{如果获得的标签类型和变量的类型不同}
+          then error(47)	{报label类型错误}
+          else if i = csmax	{如果可以声明的case达到了最大限度}
+               then fatal(6)	{报6号严重错误,程序终止}
                else begin
-                      i := i+1;
-                       k := 0;
-                      casetab[i].val := lab.i;
-                      casetab[i].lc := lc;
+                      i := i+1;	{移动case表的指针,声明新的case}
+                       k := 0;	{用来检查标号是否重复定义的变量}
+                      casetab[i].val := lab.i;	{保存新case的值}
+                      casetab[i].lc := lc;		{记录新case生成代码的位置}
                       repeat
                         k := k+1
-                      until casetab[k].val = lab.i;
-                      if k < i
-                      then error(1); { multiple definition }
+                      until casetab[k].val = lab.i;	{扫一遍已经声明的label,看有没有重复声明}
+                      if k < i	{重复声明}
+                      then error(1); { multiple definition }	{报1号错误}
                     end
         end { caselabel };
 
-      procedure onecase;
+      procedure onecase;	{用来处理case语句的一个分支}
         begin
-          if sy in constbegsys
+          if sy in constbegsys	{确定当前符号是常量的类型集合}
           then begin
-                 caselabel;
-                 while sy = comma do
+                 caselabel;	{获取一个标签}
+                 while sy = comma do	{如果有逗号说明是一个case对应多个标签的情况}
                    begin
-                     insymbol;
-                     caselabel
+                     insymbol;	{继续获取标签的label}
+                     caselabel	{继续处理}
                    end;
-                 if sy = colon
-                 then insymbol
-                 else error(5);
-                 statement([semicolon,endsy]+fsys);
-                 j := j+1;
-                 exittab[j] := lc;
-                 emit(10)
+                 if sy = colon	{读到冒号,说明label声明结束了}
+                 then insymbol	{获取下一个sym}
+                 else error(5);	{没读到冒号,报5号错误}
+                 statement([semicolon,endsy]+fsys);	{递归调用statement来处理冒号之后需要执行的程序}
+                 j := j+1;	{用来记录当前case对应exittab的位置}
+                 exittab[j] := lc	{记录当前case分支结束的代码位置,即下面将要生成的跳转指令的位置}
+                 emit(10)	{生成一条跳转指令来结束这一case分支}
                end
           end { onecase };
       begin  { casestatement  }
-        insymbol;
+        insymbol;	{获取下一个sym}
         i := 0;
         j := 0;
-        expression( fsys + [ofsy,comma,colon],x );
-        if not( x.typ in [ints,bools,chars,notyp ])
-        then error(23);
-        lc1 := lc;
-        emit(12); {jmpx}
-        if sy = ofsy
-        then insymbol
-        else error(8);
-        onecase;
-        while sy = semicolon do
+        expression( fsys + [ofsy,comma,colon],x );	{递归调用处理表达式的方式先获得当前表达式的属性,即case后面变量的类型}
+        if not( x.typ in [ints,bools,chars,notyp ])	{如果当前的表达式不是整数,布尔型,字符型或未定义类型}
+        then error(23);	{报23号错误,case类型错误}
+        lc1 := lc;	{记录当前PCODE代码的位置指针}
+        emit(12); {jmpx}	{生成SWT代码,查找情况表,注意这里暂时没有给定跳转的地址}
+        if sy = ofsy	{如果接着读到了of关键字}
+        then insymbol	{获取下一个sym}
+        else error(8);	{丢失of关键字的情况报8号错}
+        onecase;	{调用onecase方法处理}
+        while sy = semicolon do	{遇到了分号,说明还有更多的case分支}
           begin
-            insymbol;
-            onecase
+            insymbol;	{获取下一个sym}
+            onecase		{处理下一个sym}
           end;
-        code[lc1].y := lc;
-        for k := 1 to i do
-          begin
-            emit1( 13,casetab[k].val);
-            emit1( 13,casetab[k].lc);
+        code[lc1].y := lc;	{此时确定了情况表的开始地址,回填给之前声明的SWT代码,确保其能够成功跳转}
+        for k := 1 to i do	{便利所有case分支}
+          begin	{建立情况表}
+            emit1( 13,casetab[k].val);	{建立查找的值}
+            emit1( 13,casetab[k].lc);	{给出对应的跳转地址}
           end;
-        emit1(10,0);
-        for k := 1 to j do
-          code[exittab[k]].y := lc;
-        if sy = endsy
-        then insymbol
-        else error(57)
+        emit1(10,0);	{生成JMP代码,说明情况表结束}
+        for k := 1 to j do	{给定每个case分支退出之后的跳转地址}
+          code[exittab[k]].y := lc;	{现在的lc指向情况表结束之后的位置,将各分支的结束跳转地址指向这里}
+        if sy = endsy	{如果遇到了end关键字}
+        then insymbol	{读取下一个sym,case处理完毕}
+        else error(57)	{否则报57号错误}
       end { casestatement };
 
     procedure repeatstatement;{处理repeat语句的处理过程}
-      var x : item;
-          lc1: integer;
+      var x : item;		{用来获取返回值}
+          lc1: integer;	{用来记录repeat的开始位置}
       begin
-        lc1 := lc;
-        insymbol;
-        statement( [semicolon,untilsy]+fsys);
-        while sy in [semicolon]+statbegsys do
+        lc1 := lc;	{保存repeat当开始时的代码地址}
+        insymbol;	{获取下一个sym}
+        statement( [semicolon,untilsy]+fsys);	{调用statement递归子程序来处理循环体中的语句}
+        while sy in [semicolon]+statbegsys do	{如果遇到了分号或者statement的开始符号,则说明循环体中还有语句没有处理完}
           begin
-            if sy = semicolon
-            then insymbol
-            else error(14);
-            statement([semicolon,untilsy]+fsys)
+            if sy = semicolon	{如果确实是分号}
+            then insymbol	{获取下一个sym}
+            else error(14);	{报14号错,提示分号错误}
+            statement([semicolon,untilsy]+fsys)	{处理循环体中的下一条语句}
           end;
-        if sy = untilsy
+        if sy = untilsy	{如果遇到了until关键字}
         then begin
-               insymbol;
-               expression(fsys,x);
-               if not(x.typ in [bools,notyp] )
-               then error(17);
-               emit1(11,lc1);
+               insymbol;	{获取下一个sym,即循环条件}
+               expression(fsys,x);	{处理该表达式,获得其类型}
+               if not(x.typ in [bools,notyp] )	{如果不是未定义类型或者布尔型的表达式}
+               then error(17);	{报17号错误,提示需要布尔型表达式}
+               emit1(11,lc1);	{生成一条条件跳转指令,如果表达式的值是假的,则跳转回repeat开始的位置重新执行一遍}
              end
-        else error(53)
+        else error(53)	{没找到until,报53号错}
       end { repeatstatement };
 
-    procedure whilestatement;
-      var x : item;
+    procedure whilestatement;	{处理while循环的过程}
+      var x : item;		
           lc1,lc2 : integer;
       begin
         insymbol;
@@ -1838,61 +1841,61 @@ procedure statement( fsys:symset );
         code[lc2].y := lc
      end { whilestatement };
 
-    procedure forstatement;{keyflag}
+    procedure forstatement;	{处理for循环语句}
       var   cvt : types;
             x :  item;
             i,f,lc1,lc2 : integer;
      begin
-        insymbol;
-        if sy = ident
+        insymbol;	{获取下一个sym}
+        if sy = ident	{如果获取到的是标识符}
         then begin
-               i := loc(id);
-               insymbol;
-               if i = 0
-               then cvt := ints
-               else if tab[i].obj = vvariable
+               i := loc(id);	{找到这个标识符在符号表中登陆的位置,实际上是计数变量}
+               insymbol;	{获取下一个sym}
+               if i = 0	{如果没有找到这个标识符}
+               then cvt := ints	{计数变量类型默认为整形}
+               else if tab[i].obj = vvariable	{如果对应的这个标识符对应符号的大类是变量类型}
                     then begin
-                           cvt := tab[i].typ;
-                           if not tab[i].normal
-                           then error(37)
-                    else emit2(0,tab[i].lev, tab[i].adr );
-                  if not ( cvt in [notyp, ints, bools, chars])
-                           then error(18)
+                           cvt := tab[i].typ;	{计数变量类型就设置为这个变量的类型}
+                           if not tab[i].normal	{如果是变量形参,即变量存储的是值而非地址}
+                           then error(37)		{报37号错}
+						   else emit2(0,tab[i].lev, tab[i].adr );	{如果不是变量类型, 获取该符号的地址}
+						   if not ( cvt in [notyp, ints, bools, chars])	{如果获取到计数变量的类型不是未定义,整型,布尔型,字符型}
+								   then error(18)	{报18号错误}
                          end
-                    else begin
-                           error(37);
-                           cvt := ints
+                    else begin	{如果符号的类型也不是变量}
+                           error(37);	{报37号错误}
+                           cvt := ints	{将计数变量类型设置为整型}	{仅仅是给个值,还是有什么意义?}
                          end
              end
-        else skip([becomes,tosy,downtosy,dosy]+fsys,2);
-        if sy = becomes
+        else skip([becomes,tosy,downtosy,dosy]+fsys,2);	{跳过无用符号}
+        if sy = becomes	{如果识别到了赋值符号}
         then begin
-               insymbol;
-               expression( [tosy, downtosy,dosy]+fsys,x);
-               if x.typ <> cvt
-               then error(19);
+               insymbol;	{获取下一个sym}
+               expression( [tosy, downtosy,dosy]+fsys,x);	{递归调用处理表达式的方式来获得表达式的值和类型}
+               if x.typ <> cvt	{如果获取到的表达式类型和计数变量的符号类型不相同}
+               then error(19);	{报19号错误}
              end
-        else skip([tosy, downtosy,dosy]+fsys,51);
-        f := 14;
-        if sy in [tosy,downtosy]
+        else skip([tosy, downtosy,dosy]+fsys,51);	{未识别到赋值符号,则继续执行}
+        f := 14;	{生成指令的编号,暂存14号}
+        if sy in [tosy,downtosy]	{如果当前符号是to关键字或者downto关键字,其中to是每次循环变量自加一,downto是每次循环变量自减一}
         then begin
-               if sy = downtosy
-               then f := 16;
-               insymbol;
-               expression([dosy]+fsys,x);
-               if x.typ <> cvt
-               then error(19)
+               if sy = downtosy	{如果是down}
+               then f := 16;	{}
+               insymbol;		{获取下一个sym}
+               expression([dosy]+fsys,x);	{调用处理表达式的递归子程序处理括号中的表达式}
+               if x.typ <> cvt	{如果表达式的类型和左边的计数变量不同}
+               then error(19)	{报19号错误}
              end
-        else skip([dosy]+fsys,55);
-        lc1 := lc;
-        emit(f);
-        if sy = dosy
-        then insymbol
-        else error(54);
-        lc2 := lc;
-        statement(fsys);
-        emit1(f+1,lc2);
-        code[lc1].y := lc
+        else skip([dosy]+fsys,55);	{跳过直到do之前的代码段}
+        lc1 := lc;	{记录下句F1U指令的位置}
+        emit(f);	{生成F1U或F1D指令,进行循环体的入口测试}
+        if sy = dosy	{如果当前符号是do关键字}
+        then insymbol	{获取下一个sym}
+        else error(54);	{没找到do,报54号错误}
+        lc2 := lc;	{获取循环体开始代码的位置}
+        statement(fsys);	{递归调用statement来处理循环体语句}
+        emit1(f+1,lc2);		{结束时生成F2U或F2D指令}
+        code[lc1].y := lc	{将之前产生的F1U的跳转地址回传回去}
      end { forstatement };
 
     procedure standproc( n: integer );
@@ -2193,19 +2196,19 @@ procedure inter1;
     var h3, h4: integer;
 begin
       case ir.f of
-        10 : pc := ir.y ; { jump }
-        11 : begin  { conditional jump }
-               if not s[t].b
-               then pc := ir.y;
-               t := t - 1
+        10 : pc := ir.y ; { jump }	{调到第y条指令代码,JMP}
+        11 : begin  { conditional jump }	{条件跳转语句,JPC}
+               if not s[t].b	{如果栈顶值为假}
+               then pc := ir.y;	{跳转到y指令}
+               t := t - 1	{退栈}
             end;
-        12 : begin { switch }
-               h1 := s[t].i;
-               t := t-1;
-               h2 := ir.y;
+        12 : begin { switch }	{转移到y的地址,查找情况表,情况表由一系列f为13的指令构成}
+               h1 := s[t].i;	{记录栈顶值}
+               t := t-1;	{退栈}
+               h2 := ir.y;	{记录需要跳转到的地址}
                h3 := 0;
                repeat
-                 if code[h2].f <> 13
+                 if code[h2].f <> 13	{如果操作码不是13,证明跳转到的不是情况表}
                  then begin
                         h3 := 1;
                         ps := caschk
@@ -2218,26 +2221,26 @@ begin
                       else h2 := h2 + 2
                until h3 <> 0
              end;
-        14 : begin { for1up }
-               h1 := s[t-1].i;
-               if h1 <= s[t].i
-               then s[s[t-2].i].i := h1
-               else begin
-                      t := t - 3;
-                      pc := ir.y
+        14 : begin { for1up }	{增量步长for循环的初始判断,F1U}
+               h1 := s[t-1].i;	{for循环之前需要储存计数变量的地址,初值和终值,这里h1获取的是初值}
+               if h1 <= s[t].i	{如果初值小于等于终值}
+               then s[s[t-2].i].i := h1	{开始循环,将技术变量的值赋为初值}
+               else begin	{否则循环完毕}
+                      t := t - 3;	{退栈3格,退去计数变量的地址,初值和终值所占用的空间}
+                      pc := ir.y	{跳出循环,注意这里的y是由后方语句回传得到的}
                     end
              end;
-        15 : begin { for2up }
-               h2 := s[t-2].i;
-               h1 := s[h2].i+1;
-               if h1 <= s[t].i
+        15 : begin { for2up }	{增量步长的结束判断,F2U}
+               h2 := s[t-2].i;	{获得计数变量的地址}
+               h1 := s[h2].i+1;	{h1为计数变量的值自增一}
+               if h1 <= s[t].i	{判断是否还满足循环条件}
                then begin
-                      s[h2].i := h1;
-                      pc := ir.y
+                      s[h2].i := h1;	{如果满足,将h1赋给计数变量}
+                      pc := ir.y	{跳转到循环的开始位置}
                     end
-               else t := t-3;
+               else t := t-3;	{不满足的情况不做跳转(执行下一条),退栈3格}
              end;
-        16 : begin  { for1down }
+        16 : begin  { for1down }	{减量步长for循环的初始判断,F1U}
                h1 := s[t-1].i;
                if h1 >= s[t].i
                then s[s[t-2].i].i := h1
@@ -2246,7 +2249,7 @@ begin
                       t := t - 3
                     end
              end;
-        17 : begin  { for2down }
+        17 : begin  { for2down }	{减量步长的结束判断,F2U}
                h2 := s[t-2].i;
                h1 := s[h2].i-1;
                if h1 >= s[t].i

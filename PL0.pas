@@ -1,5 +1,8 @@
 program pl0 ;  { version 1.0 oct.1989 }
 { PL/0 compiler with code generation }	
+{	comment by Song Lu
+	Department of Computer Science&Engineering BUAA,Nov.2016
+}
 {常量定义}
 const norw = 13;          { no. of reserved words }	{保留字的数目}
       txmax = 100;        { length of identifier table }	{符号表长度}
