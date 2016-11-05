@@ -29,9 +29,9 @@ type symbol =
                    end;
                   {   lit 0, a : load constant a	读取常量a到数据栈栈顶
                       opr 0, a : execute operation a	执行a运算
-                      lod l, a : load variable l,a	读取变量放到数据栈栈顶，变量的相对地址为a，层次差为1
-                      sto l, a : store variable l,a	将数据栈栈顶内容存入变量，变量的相对地址为a，层次差为1
-                      cal l, a : call procedure a at level l	调用过程，过程入口指令为a,层次差为1
+                      lod l, a : load variable l,a	读取变量放到数据栈栈顶，变量的相对地址为a，层次差为l
+                      sto l, a : store variable l,a	将数据栈栈顶内容存入变量，变量的相对地址为a，层次差为l
+                      cal l, a : call procedure a at level l	调用过程，过程入口指令为a,层次差为l
                       int 0, a : increment t-register by a	数据栈栈顶指针增加a
                       jmp 0, a : jump to a	无条件跳转到指令地址a
                       jpc 0, a : jump conditional to a	条件转移到指令地址a
